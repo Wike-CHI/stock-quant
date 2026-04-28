@@ -32,4 +32,5 @@ export const PATTERN_LABELS: Record<string, string> = {
   volume_breakout: "放量突破",
   shrinkage_bounce: "缩量反弹",
   v_shape_reversal: "V型反转",
+  bowl_rebound: "碗底反弹",
 };

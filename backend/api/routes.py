@@ -5,6 +5,7 @@ from concurrent.futures import Future
 
 from models.schemas import AnalysisRequest, PatternResult
 from services import stock_data, pattern
+from services import bowl_rebound
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -99,4 +100,14 @@ def top_gainers(limit: int = 50):
         return df.to_dict(orient="records")
     except Exception as e:
         logger.error("Failed to get top gainers: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stocks/{code}/bowl-rebound")
+def stock_bowl_rebound(code: str, name: str = "", period_days: int = 120):
+    """碗底反弹策略分析"""
+    try:
+        return bowl_rebound.analyze_bowl_rebound(code, name=name, period_days=period_days)
+    except Exception as e:
+        logger.error("Bowl rebound analysis failed for %s: %s", code, e)
         raise HTTPException(status_code=500, detail=str(e))

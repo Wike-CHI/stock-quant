@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from services.stock_data import get_stock_history
+from services.bowl_rebound import detect_bowl_rebound
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +227,9 @@ def analyze_stock(code: str, name: str = "", period_days: int = 120) -> list[dic
     all_patterns.extend(detect_volume_breakout(df, code, name))
     all_patterns.extend(detect_shrinkage_bounce(df, code, name))
     all_patterns.extend(detect_v_shape_reversal(df, code, name))
+
+    bowl_signals = detect_bowl_rebound(df, code, name)
+    all_patterns.extend(bowl_signals)
 
     return [p.__dict__ for p in all_patterns]
 

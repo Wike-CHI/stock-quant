@@ -29,6 +29,7 @@ backend/
   services/
     stock_data.py      -- akshare 数据获取
     pattern.py         -- 涨幅规律分析引擎
+    bowl_rebound.py    -- 碗底反弹策略
     thread_pool.py     -- 线程池管理
   models/
     schemas.py         -- Pydantic 数据模型
@@ -60,12 +61,13 @@ docs/
 
 ## Pattern Analysis Engine
 
-识别5种涨幅模式：
+识别6种涨幅模式：
 1. **连板模式** (limit_up_streak) — 连续涨停检测
 2. **均线多头排列** (ma_bullish_alignment) — MA5>MA10>MA20>MA60
 3. **放量突破** (volume_breakout) — 量比>2 且涨幅>3%
 4. **缩量反弹** (shrinkage_bounce) — 缩量回调后放量上涨
 5. **V型反转** (v_shape_reversal) — 快速下跌后快速回升
+6. **碗底反弹** (bowl_rebound) — 双趋势线+KDJ+放量阳线（参考A-Share Quant Selector）
 
 ## Running
 
