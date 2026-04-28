@@ -7,6 +7,8 @@ from models.schemas import AnalysisRequest, PatternResult
 from services import stock_data, pattern
 from services import bowl_rebound
 from services import backtest
+from services import virtual_trading
+from models.schemas import AnalysisRequest, TradeOrder
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -122,3 +124,42 @@ def run_stock_backtest(code: str, start_date: str = "20240101", end_date: str = 
     except Exception as e:
         logger.error("Backtest failed for %s: %s", code, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== 虚拟交易 =====
+
+@router.get("/trading/account")
+def trading_account():
+    """查询虚拟账户"""
+    return virtual_trading.get_account_info()
+
+
+@router.post("/trading/order")
+def trading_order(req: TradeOrder):
+    """下单（买入/卖出）"""
+    try:
+        return virtual_trading.place_order(
+            code=req.code, name=req.name, side=req.side,
+            quantity=req.quantity, price=req.price,
+        )
+    except Exception as e:
+        logger.error("Order failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trading/orders")
+def trading_orders(limit: int = 50):
+    """查询历史委托"""
+    return virtual_trading.get_orders(limit)
+
+
+@router.post("/trading/settle")
+def trading_settle():
+    """T+1 日结（将今日买入量转为可卖）"""
+    return virtual_trading.settle_day()
+
+
+@router.post("/trading/reset")
+def trading_reset():
+    """重置虚拟账户"""
+    return virtual_trading.reset_account()

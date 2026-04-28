@@ -5,7 +5,7 @@ import type { StockInfo } from "../types";
 interface Props {
   stocks: StockInfo[];
   loading: boolean;
-  onSelect: (code: string) => void;
+  onSelect: (code: string, stock?: StockInfo) => void;
   selectedCode: string | null;
 }
 
@@ -55,7 +55,7 @@ export function StockList({ stocks, loading, onSelect, selectedCode }: Props) {
               return (
                 <div
                   key={stock.code}
-                  onClick={() => onSelect(stock.code)}
+                  onClick={() => onSelect(stock.code, stock)}
                   style={{
                     position: "absolute", top: vRow.start, left: 0, right: 0,
                     height: vRow.size, display: "flex", alignItems: "center",

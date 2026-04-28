@@ -35,3 +35,11 @@ class AnalysisRequest(BaseModel):
 class WSMessage(BaseModel):
     type: str  # "subscribe" | "unsubscribe" | "ping"
     codes: list[str] = []
+
+
+class TradeOrder(BaseModel):
+    code: str
+    name: str = ""
+    side: str  # "buy" / "sell"
+    quantity: int
+    price: float = 0  # 0=市价

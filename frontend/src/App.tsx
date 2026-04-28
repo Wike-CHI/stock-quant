@@ -3,8 +3,10 @@ import { Header } from "./components/Header";
 import { StockList } from "./components/StockList";
 import { PatternPanel } from "./components/PatternPanel";
 import { BacktestPanel } from "./components/BacktestPanel";
+import { TradingPanel } from "./components/TradingPanel";
 import { useStockList, usePatternAnalysis } from "./hooks/useStockData";
 import { useWebSocket } from "./hooks/useWebSocket";
+import type { StockInfo } from "./types";
 
 interface StockQuote {
   code: string;
@@ -16,6 +18,7 @@ interface StockQuote {
 export default function App() {
   const { stocks, loading, refresh } = useStockList(200);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedStock, setSelectedStock] = useState<StockInfo | null>(null);
   const { patterns, loading: patternLoading } = usePatternAnalysis(selectedCode);
 
   const { connected, subscribe } = useWebSocket({
@@ -27,8 +30,9 @@ export default function App() {
     },
   });
 
-  const handleSelect = (code: string) => {
+  const handleSelect = (code: string, stock?: StockInfo) => {
     setSelectedCode(code);
+    setSelectedStock(stock ?? null);
     subscribe([code]);
   };
 
@@ -54,6 +58,10 @@ export default function App() {
             selectedCode={selectedCode}
           />
           <BacktestPanel selectedCode={selectedCode} />
+          <TradingPanel
+            selectedCode={selectedCode}
+            selectedName={selectedStock?.name}
+          />
         </div>
       </div>
     </div>
