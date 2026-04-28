@@ -30,6 +30,7 @@ backend/
     stock_data.py      -- akshare 数据获取
     pattern.py         -- 涨幅规律分析引擎
     bowl_rebound.py    -- 碗底反弹策略
+    backtest.py        -- AKQuant 回测服务
     thread_pool.py     -- 线程池管理
   models/
     schemas.py         -- Pydantic 数据模型
@@ -39,6 +40,9 @@ frontend/
     App.tsx            -- 主布局（左侧列表 + 右侧分析面板）
     components/
       Header.tsx       -- 顶栏（WS状态/刷新）
+      StockList.tsx    -- 虚拟列表股票列表
+      PatternPanel.tsx -- 规律分析结果面板
+      BacktestPanel.tsx -- AKQuant 策略回测面板
       StockList.tsx    -- 虚拟列表股票列表
       PatternPanel.tsx -- 规律分析结果面板
     hooks/
@@ -68,6 +72,14 @@ docs/
 4. **缩量反弹** (shrinkage_bounce) — 缩量回调后放量上涨
 5. **V型反转** (v_shape_reversal) — 快速下跌后快速回升
 6. **碗底反弹** (bowl_rebound) — 双趋势线+KDJ+放量阳线（参考A-Share Quant Selector）
+
+## AKQuant 回测引擎
+
+- Rust 撮合内核 + Python 策略接口
+- 支持A股 T+1、印花税、佣金、滑点
+- 碗底反弹策略已封装为 `BowlReboundBTStrategy`
+- API: `POST /api/backtest/{code}`
+- 前端: BacktestPanel 组件（收益率/夏普/回撤/胜率）
 
 ## Running
 

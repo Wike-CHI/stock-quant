@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Header } from "./components/Header";
 import { StockList } from "./components/StockList";
 import { PatternPanel } from "./components/PatternPanel";
+import { BacktestPanel } from "./components/BacktestPanel";
 import { useStockList, usePatternAnalysis } from "./hooks/useStockData";
 import { useWebSocket } from "./hooks/useWebSocket";
 
@@ -52,6 +53,7 @@ export default function App() {
             loading={patternLoading}
             selectedCode={selectedCode}
           />
+          <BacktestPanel selectedCode={selectedCode} />
         </div>
       </div>
     </div>

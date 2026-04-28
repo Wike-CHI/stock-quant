@@ -6,6 +6,7 @@ from concurrent.futures import Future
 from models.schemas import AnalysisRequest, PatternResult
 from services import stock_data, pattern
 from services import bowl_rebound
+from services import backtest
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -110,4 +111,14 @@ def stock_bowl_rebound(code: str, name: str = "", period_days: int = 120):
         return bowl_rebound.analyze_bowl_rebound(code, name=name, period_days=period_days)
     except Exception as e:
         logger.error("Bowl rebound analysis failed for %s: %s", code, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/backtest/{code}")
+def run_stock_backtest(code: str, start_date: str = "20240101", end_date: str = ""):
+    """对个股执行碗底反弹策略回测"""
+    try:
+        return backtest.run_backtest(code, start_date=start_date, end_date=end_date)
+    except Exception as e:
+        logger.error("Backtest failed for %s: %s", code, e)
         raise HTTPException(status_code=500, detail=str(e))
