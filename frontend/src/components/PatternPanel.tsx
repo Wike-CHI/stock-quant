@@ -1,4 +1,5 @@
-import { PatternMatch, PATTERN_LABELS } from "../types";
+import { PATTERN_LABELS } from "../types";
+import type { PatternMatch } from "../types";
 
 interface Props {
   patterns: PatternMatch[];

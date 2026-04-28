@@ -119,6 +119,8 @@ def _similarity_score(row: pd.Series, params: dict) -> float:
 
 def detect_bowl_rebound(df: pd.DataFrame, code: str, name: str, params: dict | None = None) -> list[BowlSignal]:
     """检测碗底反弹信号"""
+    if df.empty or len(df.columns) == 0:
+        return []
     p = {**DEFAULT_PARAMS, **(params or {})}
     df = calculate_indicators(df, p)
 

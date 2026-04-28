@@ -1,16 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
-import { API_BASE, StockInfo, PatternMatch } from "../types";
+import { API_BASE } from "../types";
+import type { StockInfo, PatternMatch } from "../types";
 
 export function useStockList(limit = 50) {
   const [stocks, setStocks] = useState<StockInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/top-gainers?limit=${limit}`);
+      const res = await globalThis.fetch(`${API_BASE}/top-gainers?limit=${limit}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setStocks(await res.json());
     } catch (e) {
@@ -20,8 +21,8 @@ export function useStockList(limit = 50) {
     }
   }, [limit]);
 
-  useEffect(() => { fetch(); }, [fetch]);
-  return { stocks, loading, error, refresh: fetch };
+  useEffect(() => { fetchData(); }, [fetchData]);
+  return { stocks, loading, error, refresh: fetchData };
 }
 
 export function usePatternAnalysis(code: string | null) {
@@ -33,7 +34,7 @@ export function usePatternAnalysis(code: string | null) {
     if (!code) { setPatterns([]); return; }
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/stocks/${code}/pattern`)
+    globalThis.fetch(`${API_BASE}/stocks/${code}/pattern`)
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
       .then(setPatterns)
       .catch(e => setError(e.message))

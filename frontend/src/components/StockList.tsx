@@ -1,6 +1,6 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { StockInfo } from "../types";
+import type { StockInfo } from "../types";
 
 interface Props {
   stocks: StockInfo[];
