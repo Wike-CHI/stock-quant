@@ -17,7 +17,7 @@ from services import stock_data
 
 logger = logging.getLogger(__name__)
 
-PUSH_INTERVAL = 3  # 秒
+PUSH_INTERVAL = 2  # 秒，更实时的推送
 
 
 class ConnectionManager:

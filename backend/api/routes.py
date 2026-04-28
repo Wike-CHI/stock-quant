@@ -3,12 +3,11 @@ import logging
 from fastapi import APIRouter, HTTPException
 from concurrent.futures import Future
 
-from models.schemas import AnalysisRequest, PatternResult
+from models.schemas import AnalysisRequest, TradeOrder
 from services import stock_data, pattern
 from services import bowl_rebound
 from services import backtest
 from services import virtual_trading
-from models.schemas import AnalysisRequest, TradeOrder
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -16,14 +15,34 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/stocks")
-def list_stocks(limit: int = 50, sort_by: str = "change_pct", ascending: bool = False):
-    """获取A股列表（涨幅排行等）"""
+def list_stocks(limit: int = 50, sort_by: str = "change_pct", ascending: bool = False,
+                min_change: float | None = None, max_change: float | None = None,
+                min_price: float | None = None, max_price: float | None = None,
+                min_turnover_rate: float | None = None, min_vol_ratio: float | None = None,
+                keyword: str = ""):
+    """获取A股列表（支持筛选）"""
     try:
         df = stock_data.get_a_stock_list()
         df = df.dropna(subset=["change_pct"])
+
+        if keyword:
+            mask = df["code"].str.contains(keyword) | df["name"].str.contains(keyword)
+            df = df[mask]
+        if min_change is not None:
+            df = df[df["change_pct"] >= min_change]
+        if max_change is not None:
+            df = df[df["change_pct"] <= max_change]
+        if min_price is not None:
+            df = df[df["price"] >= min_price]
+        if max_price is not None:
+            df = df[df["price"] <= max_price]
+        if min_turnover_rate is not None:
+            df = df[df["turnover_rate"] >= min_turnover_rate]
+        if min_vol_ratio is not None:
+            df = df[df["vol_ratio"] >= min_vol_ratio]
+
         df = df.sort_values(sort_by, ascending=ascending)
-        df = df.head(limit)
-        return df.to_dict(orient="records")
+        return df.head(limit).to_dict(orient="records")
     except Exception as e:
         logger.error("Failed to list stocks: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

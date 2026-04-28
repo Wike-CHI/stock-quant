@@ -30,7 +30,7 @@ HIST_COLUMNS = {
 
 _cache_ts: dict[str, float] = {}
 _cache_df: dict[str, pd.DataFrame] = {}
-_CACHE_TTL = 60  # seconds
+_CACHE_TTL = 15  # seconds（更实时）
 
 
 def _get_cached(key: str) -> Optional[pd.DataFrame]:

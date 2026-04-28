@@ -9,6 +9,12 @@ export interface StockInfo {
   low: number;
   open: number;
   prev_close: number;
+  turnover_rate?: number;
+  vol_ratio?: number;
+  pe?: number;
+  pb?: number;
+  total_mv?: number;
+  circ_mv?: number;
 }
 
 export interface PatternMatch {

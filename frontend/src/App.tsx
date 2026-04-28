@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Header } from "./components/Header";
 import { StockList } from "./components/StockList";
+import { StockFilter } from "./components/StockFilter";
+import type { FilterState } from "./components/StockFilter";
+import { KlineChart } from "./components/KlineChart";
 import { PatternPanel } from "./components/PatternPanel";
 import { BacktestPanel } from "./components/BacktestPanel";
 import { TradingPanel } from "./components/TradingPanel";
@@ -15,8 +18,14 @@ interface StockQuote {
   change_pct: number;
 }
 
+const DEFAULT_FILTER: FilterState = {
+  keyword: "", minChange: "", maxChange: "",
+  minPrice: "", maxPrice: "", minTurnoverRate: "", sortBy: "change_pct",
+};
+
 export default function App() {
-  const { stocks, loading, refresh } = useStockList(200);
+  const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
+  const { stocks, loading, refresh } = useStockList(200, filter);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<StockInfo | null>(null);
   const { patterns, loading: patternLoading } = usePatternAnalysis(selectedCode);
@@ -44,6 +53,7 @@ export default function App() {
       <Header connected={connected} onRefresh={refresh} />
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <div style={{ width: 420, borderRight: "1px solid #21262d", flexShrink: 0 }}>
+          <StockFilter filter={filter} onChange={setFilter} />
           <StockList
             stocks={stocks}
             loading={loading}
@@ -52,6 +62,7 @@ export default function App() {
           />
         </div>
         <div style={{ flex: 1, overflow: "auto" }}>
+          <KlineChart code={selectedCode} />
           <PatternPanel
             patterns={patterns}
             loading={patternLoading}
