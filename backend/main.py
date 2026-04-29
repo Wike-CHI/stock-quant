@@ -10,6 +10,7 @@ from api.routes import router
 from api.websocket import ws_handler
 from services.thread_pool import ThreadPool
 from services import stock_data
+from services import scanner
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -23,6 +24,9 @@ async def lifespan(app: FastAPI):
 
     # Pre-warm spot data on startup
     stock_data.prewarm_spot()
+
+    # Register refresh callback (breaks circular dep between stock_data ↔ scanner)
+    stock_data.register_refresh_callback(scanner.run_scan)
 
     # Start background refresh daemon thread
     refresh_thread = threading.Thread(

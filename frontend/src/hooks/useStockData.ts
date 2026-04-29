@@ -1,9 +1,14 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { API_BASE } from "../types";
 import type { StockInfo, PatternMatch } from "../types";
 import type { FilterState } from "../components/StockFilter";
 
 const POLL_INTERVAL = 30_000; // 30 秒自动轮询
+
+function serializeFilter(f?: FilterState): string {
+  if (!f) return "";
+  return `${f.keyword}|${f.minChange}|${f.maxChange}|${f.minPrice}|${f.maxPrice}|${f.minTurnoverRate}|${f.sortBy}`;
+}
 
 export function useStockList(limit = 200, filter?: FilterState) {
   const [stocks, setStocks] = useState<StockInfo[]>([]);
@@ -12,6 +17,9 @@ export function useStockList(limit = 200, filter?: FilterState) {
 
   // 用 Map 维护实时行情，key = code
   const quoteMapRef = useRef<Map<string, Partial<StockInfo>>>(new Map());
+
+  // 序列化 filter 为稳定 key，避免父组件每次 render 传新引用
+  const filterKey = useMemo(() => serializeFilter(filter), [filter]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -43,8 +51,8 @@ export function useStockList(limit = 200, filter?: FilterState) {
     } finally {
       setLoading(false);
     }
-  }, [limit, filter?.keyword, filter?.minChange, filter?.maxChange,
-      filter?.minPrice, filter?.maxPrice, filter?.minTurnoverRate, filter?.sortBy]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [limit, filterKey]);
 
   // 初始加载
   useEffect(() => { fetchData(); }, [fetchData]);

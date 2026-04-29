@@ -48,31 +48,41 @@ export function PredictionPanel({ selectedCode }: Props) {
 
   if (!selectedCode) return null;
 
-  const handlePredict = () => {
-    fetch(`${API_BASE}/stocks/${selectedCode}/predict`)
-      .then(r => r.json())
-      .then(setResult)
-      .catch(() => setResult(null));
+  const handlePredict = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/stocks/${selectedCode}/predict`);
+      if (!res.ok) {
+        setResult({ error: `请求失败 (${res.status})` } as PredResult);
+        return;
+      }
+      setResult(await res.json());
+    } catch {
+      setResult({ error: "网络错误" } as PredResult);
+    }
   };
 
-  const handleTrain = () => {
+  const handleTrain = async () => {
     setTraining(true);
     setTrainResult(null);
-    fetch(`${API_BASE}/stocks/${selectedCode}/train?epochs=50`, { method: "POST" })
-      .then(r => r.json())
-      .then(data => {
+    try {
+      const res = await fetch(`${API_BASE}/stocks/${selectedCode}/train?epochs=50`, { method: "POST" });
+      if (!res.ok) {
         setTraining(false);
-        if (data.error) {
-          setTrainResult(`训练失败: ${data.error}`);
-        } else {
-          setTrainResult(`训练完成: 样本${data.samples}, 损失${data.best_val_loss}`);
-          handlePredict();
-        }
-      })
-      .catch(() => {
-        setTraining(false);
-        setTrainResult("训练请求失败");
-      });
+        setTrainResult(`训练请求失败 (${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setTraining(false);
+      if (data.error) {
+        setTrainResult(`训练失败: ${data.error}`);
+      } else {
+        setTrainResult(`训练完成: 样本${data.samples}, 损失${data.best_val_loss}`);
+        handlePredict();
+      }
+    } catch {
+      setTraining(false);
+      setTrainResult("训练请求失败");
+    }
   };
 
   return (

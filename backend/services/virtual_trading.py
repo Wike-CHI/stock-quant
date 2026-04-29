@@ -111,14 +111,17 @@ def _load() -> Account:
     return Account()
 
 
-def _save(account: Account):
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    data = {
+def _serialize(account: Account) -> dict:
+    return {
         "cash": account.cash,
         "positions": {k: asdict(v) for k, v in account.positions.items()},
         "orders": [asdict(o) for o in account.orders[-200:]],
         "next_day_positions": account.next_day_positions,
     }
+
+
+def _write_snapshot(data: dict):
+    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
     DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -178,8 +181,11 @@ def place_order(code: str, name: str, side: str, quantity: int, price: float = 0
             _execute_sell(acc, order)
 
         acc.orders.append(order)
-        _save(acc)
-        return asdict(order)
+        snapshot = _serialize(acc)
+        result = asdict(order)
+
+    _write_snapshot(snapshot)
+    return result
 
 
 def _execute_buy(acc: Account, order: Order):
@@ -279,7 +285,9 @@ def settle_day():
             if pos:
                 pos.available += qty
         acc.next_day_positions.clear()
-        _save(acc)
+        snapshot = _serialize(acc)
+
+    _write_snapshot(snapshot)
     return {"status": "ok", "message": "T+1 日结完成"}
 
 
@@ -294,5 +302,7 @@ def reset_account():
     with _lock:
         global _account
         _account = Account()
-        _save(_account)
+        snapshot = _serialize(_account)
+
+    _write_snapshot(snapshot)
     return {"status": "ok", "message": "账户已重置为100万"}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { init, dispose } from "klinecharts";
 import { API_BASE } from "../types";
 
@@ -17,16 +17,35 @@ const PERIODS = [
   { label: "月", value: "monthly", span: 1, type: "month" as const },
 ];
 
+function loadBars(code: string, period: string): Promise<Array<{
+  timestamp: number; open: number; high: number; low: number;
+  close: number; volume: number; turnover: number;
+}>> {
+  return globalThis.fetch(`${API_BASE}/stocks/${code}/history?period=${period}`)
+    .then(res => res.ok ? res.json() : [])
+    .then((data: Array<{ date: string; open: number; close: number; high: number; low: number; volume: number; turnover: number }>) =>
+      data.map(d => ({
+        timestamp: new Date(d.date).getTime(),
+        open: d.open, high: d.high, low: d.low, close: d.close,
+        volume: d.volume, turnover: d.turnover,
+      }))
+    )
+    .catch(() => []);
+}
+
 export function KlineChart({ code }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof init> | null>(null);
+  const chartIdRef = useRef<string>("");
   const [activePeriod, setActivePeriod] = useState("daily");
 
+  // code 变化时：重建 chart
   useEffect(() => {
     if (!containerRef.current || !code) return;
 
     const chartId = `kline-${code}`;
     containerRef.current.id = chartId;
+    chartIdRef.current = chartId;
 
     if (chartRef.current) {
       try { dispose(chartId); } catch { /* */ }
@@ -59,25 +78,35 @@ export function KlineChart({ code }: Props) {
 
     chart.setDataLoader({
       getBars: ({ callback }) => {
-        globalThis.fetch(`${API_BASE}/stocks/${code}/history?period=${activePeriod}`)
-          .then(res => res.ok ? res.json() : [])
-          .then((data: Array<{ date: string; open: number; close: number; high: number; low: number; volume: number; turnover: number }>) => {
-            const bars = data.map(d => ({
-              timestamp: new Date(d.date).getTime(),
-              open: d.open, high: d.high, low: d.low, close: d.close,
-              volume: d.volume, turnover: d.turnover,
-            }));
-            callback(bars);
-          })
-          .catch(() => callback([]));
+        loadBars(code, activePeriod).then(callback);
       },
     });
 
     return () => {
       try { dispose(chartId); } catch { /* */ }
       chartRef.current = null;
+      chartIdRef.current = "";
     };
-  }, [code, activePeriod]);
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // activePeriod 变化时：复用 chart 实例，只更新周期和数据
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !code || !chartIdRef.current) return;
+
+    const periodConfig = PERIODS.find(p => p.value === activePeriod) || PERIODS[5];
+    chart.setPeriod({ span: periodConfig.span, type: periodConfig.type });
+
+    chart.setDataLoader({
+      getBars: ({ callback }) => {
+        loadBars(code, activePeriod).then(callback);
+      },
+    });
+  }, [activePeriod, code]);
+
+  const handlePeriodChange = useCallback((period: string) => {
+    setActivePeriod(period);
+  }, []);
 
   if (!code) return null;
 
@@ -89,7 +118,7 @@ export function KlineChart({ code }: Props) {
           {PERIODS.map(p => (
             <button
               key={p.value}
-              onClick={() => setActivePeriod(p.value)}
+              onClick={() => handlePeriodChange(p.value)}
               style={{
                 padding: "2px 8px", borderRadius: 3,
                 border: "1px solid #30363d", cursor: "pointer",

@@ -44,9 +44,13 @@ export function TradingPanel({ selectedCode, selectedName = "" }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: selectedCode, name: selectedName,
-          side, quantity, price: 0, // 0=市价
+          side, quantity, price: 0,
         }),
       });
+      if (!res.ok) {
+        setMessage({ text: `下单失败 (${res.status})`, ok: false });
+        return;
+      }
       const data = await res.json();
       setMessage({
         text: data.status === "filled"

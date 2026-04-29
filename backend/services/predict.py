@@ -32,6 +32,7 @@ MODEL_DIR = Path(os.environ.get("MODEL_DIR", "D:/AI/stock-quant/models"))
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_model_cache: dict[str, tuple[StockLSTM, StandardScaler, float]] = {}
 
 
 class StockLSTM(nn.Module):
@@ -181,14 +182,19 @@ def predict(code: str) -> dict:
     if len(df) < SEQ_LEN:
         return {"error": "有效数据不足"}
 
-    ckpt = torch.load(model_path, map_location=_device, weights_only=False)
-    model = StockLSTM().to(_device)
-    model.load_state_dict(ckpt["model"])
-    model.eval()
-
-    scaler = StandardScaler()
-    scaler.mean_ = ckpt["scaler_mean"]
-    scaler.scale_ = ckpt["scaler_scale"]
+    mtime = model_path.stat().st_mtime
+    cached = _model_cache.get(code)
+    if cached and cached[2] == mtime:
+        model, scaler, _ = cached
+    else:
+        ckpt = torch.load(model_path, map_location=_device, weights_only=True)
+        model = StockLSTM().to(_device)
+        model.load_state_dict(ckpt["model"])
+        model.eval()
+        scaler = StandardScaler()
+        scaler.mean_ = ckpt["scaler_mean"]
+        scaler.scale_ = ckpt["scaler_scale"]
+        _model_cache[code] = (model, scaler, mtime)
 
     recent = df[FEATURE_COLS].tail(SEQ_LEN).values.astype(np.float32)
     recent_scaled = scaler.transform(recent)

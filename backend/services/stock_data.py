@@ -4,7 +4,7 @@ import math
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Callable, Optional
 
 import akshare as ak
 import pandas as pd
@@ -360,10 +360,16 @@ def prewarm_spot():
         logger.warning("Prewarm failed: %s — will retry in background", e)
 
 
+_on_refresh_callbacks: list[Callable] = []
+
+
+def register_refresh_callback(cb: Callable):
+    """注册数据刷新后的回调（如 scanner.run_scan）"""
+    _on_refresh_callbacks.append(cb)
+
+
 def background_refresh():
     global _spot_df
-    # 延迟导入避免循环依赖
-    from services import scanner
     while True:
         time.sleep(SPOT_REFRESH_INTERVAL)
         try:
@@ -373,8 +379,12 @@ def background_refresh():
                 _spot_df = df
             finally:
                 _spot_rwlock.release_write()
-            # 数据刷新后触发预警扫描
-            scanner.run_scan()
+            # 数据刷新后触发回调
+            for cb in _on_refresh_callbacks:
+                try:
+                    cb()
+                except Exception as e:
+                    logger.error("Refresh callback failed: %s", e)
         except Exception as e:
             logger.error("Background spot refresh failed: %s", e)
 

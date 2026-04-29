@@ -69,6 +69,10 @@ class AlertStore:
             self._cooldown[key] = now
             self._alerts.appendleft(alert)
             listeners = list(self._listeners)
+            # 清理超过 2 倍冷却期的过期条目，防止内存泄漏
+            expired_keys = [k for k, v in self._cooldown.items() if now - v > COOLDOWN_SECONDS * 2]
+            for k in expired_keys:
+                del self._cooldown[k]
 
         # 回调在锁外执行，避免死锁
         for cb in listeners:

@@ -14,6 +14,11 @@ import { useStockList, usePatternAnalysis } from "./hooks/useStockData";
 import { useWebSocket } from "./hooks/useWebSocket";
 import type { StockInfo } from "./types";
 
+function isWsMessage(v: unknown): v is { type: string; data: unknown } {
+  return typeof v === "object" && v !== null && "type" in v && "data" in v
+    && typeof (v as Record<string, unknown>).type === "string";
+}
+
 const DEFAULT_FILTER: FilterState = {
   keyword: "", minChange: "", maxChange: "",
   minPrice: "", maxPrice: "", minTurnoverRate: "", sortBy: "change_pct",
@@ -32,11 +37,11 @@ export default function App() {
 
   const { connected, subscribe } = useWebSocket({
     onMessage: useCallback((data: unknown) => {
-      const msg = data as { type: string; data: unknown };
-      if (msg.type === "quotes" && Array.isArray(msg.data)) {
-        applyPatchRef.current(msg.data as Array<Partial<StockInfo>>);
-      } else if (msg.type === "alert") {
-        setLatestAlert(msg.data as AlertItem);
+      if (!isWsMessage(data)) return;
+      if (data.type === "quotes" && Array.isArray(data.data)) {
+        applyPatchRef.current(data.data as Array<Partial<StockInfo>>);
+      } else if (data.type === "alert") {
+        setLatestAlert(data.data as AlertItem);
       }
     }, []),
   });
