@@ -14,6 +14,7 @@ import time
 from fastapi import WebSocket, WebSocketDisconnect
 
 from services import stock_data
+from services.alert_store import store as alert_store, Alert
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,22 @@ async def ws_handler(ws: WebSocket):
     loop = asyncio.get_event_loop()
     codes_subscribed: set[str] = set()
     running = True
-    # 上次推送快照，用于 diff
     last_snapshot: dict[str, dict] = {}
+
+    # ── 预警推送回调 ──────────────────────────────────────────
+    def _on_alert(alert: Alert):
+        """alert_store 有新预警时，在事件循环里推送给本 WS 客户端"""
+        if not running:
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(
+                ws.send_json({"type": "alert", "data": alert.to_dict()}),
+                loop,
+            )
+        except Exception:
+            pass
+
+    alert_store.register_listener(_on_alert)
 
     async def _reader():
         nonlocal running
@@ -159,5 +174,7 @@ async def ws_handler(ws: WebSocket):
     try:
         await asyncio.gather(_reader(), _pusher())
     finally:
+        running = False
+        alert_store.unregister_listener(_on_alert)
         manager.disconnect(ws)
         logger.info("WS client disconnected, total=%d", len(manager.active))

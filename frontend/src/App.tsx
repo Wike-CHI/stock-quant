@@ -8,6 +8,8 @@ import { PatternPanel } from "./components/PatternPanel";
 import { BacktestPanel } from "./components/BacktestPanel";
 import { PredictionPanel } from "./components/PredictionPanel";
 import { TradingPanel } from "./components/TradingPanel";
+import { AlertPanel } from "./components/AlertPanel";
+import type { AlertItem } from "./components/AlertPanel";
 import { useStockList, usePatternAnalysis } from "./hooks/useStockData";
 import { useWebSocket } from "./hooks/useWebSocket";
 import type { StockInfo } from "./types";
@@ -23,16 +25,18 @@ export default function App() {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<StockInfo | null>(null);
   const { patterns, loading: patternLoading } = usePatternAnalysis(selectedCode);
+  const [latestAlert, setLatestAlert] = useState<AlertItem | null>(null);
 
-  // 用 ref 存 applyQuotePatch，避免 WS callback 产生 stale closure
   const applyPatchRef = useRef(applyQuotePatch);
   applyPatchRef.current = applyQuotePatch;
 
   const { connected, subscribe } = useWebSocket({
     onMessage: useCallback((data: unknown) => {
-      const msg = data as { type: string; data: Array<Partial<StockInfo>> };
+      const msg = data as { type: string; data: unknown };
       if (msg.type === "quotes" && Array.isArray(msg.data)) {
-        applyPatchRef.current(msg.data);
+        applyPatchRef.current(msg.data as Array<Partial<StockInfo>>);
+      } else if (msg.type === "alert") {
+        setLatestAlert(msg.data as AlertItem);
       }
     }, []),
   });
@@ -60,6 +64,7 @@ export default function App() {
           />
         </div>
         <div style={{ flex: 1, overflow: "auto" }}>
+          <AlertPanel newAlert={latestAlert} onSelectCode={handleSelect} />
           <KlineChart code={selectedCode} />
           <PatternPanel
             patterns={patterns}

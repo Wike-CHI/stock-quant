@@ -9,6 +9,7 @@ from services import bowl_rebound
 from services import backtest
 from services import virtual_trading
 from services import predict
+from services.alert_store import store as alert_store
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -211,3 +212,25 @@ def stock_predict(code: str):
 def model_status():
     """查询模型状态"""
     return predict.get_model_status()
+
+
+# ===== 量化预警 =====
+
+@router.get("/alerts")
+def get_alerts(limit: int = 100, code: str = ""):
+    """获取最近预警记录"""
+    return alert_store.get_recent(limit=limit, code=code)
+
+
+@router.delete("/alerts")
+def clear_alerts():
+    """清空预警记录"""
+    alert_store.clear()
+    return {"ok": True}
+
+
+@router.get("/alerts/config")
+def get_alert_config():
+    """获取当前预警阈值配置"""
+    from services.scanner import THRESH
+    return THRESH

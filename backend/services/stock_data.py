@@ -362,6 +362,8 @@ def prewarm_spot():
 
 def background_refresh():
     global _spot_df
+    # 延迟导入避免循环依赖
+    from services import scanner
     while True:
         time.sleep(SPOT_REFRESH_INTERVAL)
         try:
@@ -371,6 +373,8 @@ def background_refresh():
                 _spot_df = df
             finally:
                 _spot_rwlock.release_write()
+            # 数据刷新后触发预警扫描
+            scanner.run_scan()
         except Exception as e:
             logger.error("Background spot refresh failed: %s", e)
 
