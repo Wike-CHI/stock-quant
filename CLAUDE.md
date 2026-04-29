@@ -31,6 +31,8 @@ backend/
     pattern.py         -- 涨幅规律分析引擎
     bowl_rebound.py    -- 碗底反弹策略
     backtest.py        -- AKQuant 回测服务
+    virtual_trading.py -- 虚拟交易引擎（T+1/佣金/印花税/滑点）
+    predict.py         -- AI预测模块
     thread_pool.py     -- 线程池管理
   models/
     schemas.py         -- Pydantic 数据模型
@@ -39,12 +41,14 @@ frontend/
   src/
     App.tsx            -- 主布局（左侧列表 + 右侧分析面板）
     components/
-      Header.tsx       -- 顶栏（WS状态/刷新）
-      StockList.tsx    -- 虚拟列表股票列表
-      PatternPanel.tsx -- 规律分析结果面板
+      Header.tsx        -- 顶栏（WS状态/刷新）
+      StockList.tsx     -- 虚拟列表股票列表
+      PatternPanel.tsx  -- 规律分析结果面板
       BacktestPanel.tsx -- AKQuant 策略回测面板
-      StockList.tsx    -- 虚拟列表股票列表
-      PatternPanel.tsx -- 规律分析结果面板
+      KlineChart.tsx    -- K线图（蜡烛图+均线+成交量）
+      StockFilter.tsx   -- 股票筛选器（涨幅/价格/换手率/量比）
+      TradingPanel.tsx  -- 虚拟交易面板（T+1/佣金/印花税）
+      PredictionPanel.tsx -- AI预测面板
     hooks/
       useWebSocket.ts  -- WS 连接管理
       useStockData.ts  -- 数据获取 hooks

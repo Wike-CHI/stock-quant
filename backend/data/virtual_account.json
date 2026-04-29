@@ -1,0 +1,197 @@
+{
+  "cash": 925347.7199999999,
+  "positions": {
+    "920471": {
+      "code": "920471",
+      "name": "美邦科技",
+      "quantity": 200,
+      "available": 0,
+      "avg_cost": 14.787,
+      "latest_price": 14.78
+    },
+    "301261": {
+      "code": "301261",
+      "name": "恒工精密",
+      "quantity": 200,
+      "available": 0,
+      "avg_cost": 89.805,
+      "latest_price": 89.76
+    },
+    "002845": {
+      "code": "002845",
+      "name": "同兴达",
+      "quantity": 400,
+      "available": 0,
+      "avg_cost": 13.907,
+      "latest_price": 13.9
+    },
+    "920156": {
+      "code": "920156",
+      "name": "海昌智能",
+      "quantity": 200,
+      "available": 0,
+      "avg_cost": 39.42,
+      "latest_price": 39.4
+    },
+    "300905": {
+      "code": "300905",
+      "name": "宝丽迪",
+      "quantity": 600,
+      "available": 0,
+      "avg_cost": 67.054,
+      "latest_price": 67.02
+    }
+  },
+  "orders": [
+    {
+      "id": "920471-b-1777347891403",
+      "code": "920471",
+      "name": "美邦科技",
+      "side": "buy",
+      "quantity": 200,
+      "price": 0.0,
+      "filled_price": 14.787,
+      "status": "filled",
+      "reason": "成交价14.787",
+      "created_at": 1777347891.403599,
+      "filled_at": 1777347891.4048336
+    },
+    {
+      "id": "301261-b-1777347896472",
+      "code": "301261",
+      "name": "恒工精密",
+      "side": "buy",
+      "quantity": 200,
+      "price": 0.0,
+      "filled_price": 89.805,
+      "status": "filled",
+      "reason": "成交价89.805",
+      "created_at": 1777347896.472957,
+      "filled_at": 1777347896.4742591
+    },
+    {
+      "id": "002845-b-1777347906449",
+      "code": "002845",
+      "name": "同兴达",
+      "side": "buy",
+      "quantity": 200,
+      "price": 0.0,
+      "filled_price": 13.907,
+      "status": "filled",
+      "reason": "成交价13.907",
+      "created_at": 1777347906.4497533,
+      "filled_at": 1777347906.4510424
+    },
+    {
+      "id": "002845-b-1777347910233",
+      "code": "002845",
+      "name": "同兴达",
+      "side": "buy",
+      "quantity": 200,
+      "price": 0.0,
+      "filled_price": 13.907,
+      "status": "filled",
+      "reason": "成交价13.907",
+      "created_at": 1777347910.2332501,
+      "filled_at": 1777347910.2343597
+    },
+    {
+      "id": "920156-b-1777347912779",
+      "code": "920156",
+      "name": "海昌智能",
+      "side": "buy",
+      "quantity": 200,
+      "price": 0.0,
+      "filled_price": 39.42,
+      "status": "filled",
+      "reason": "成交价39.420",
+      "created_at": 1777347912.7792358,
+      "filled_at": 1777347912.7801948
+    },
+    {
+      "id": "300905-b-1777363151480",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363151.4804149,
+      "filled_at": 1777363151.4824553
+    },
+    {
+      "id": "300905-b-1777363199251",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363199.251549,
+      "filled_at": 1777363199.252806
+    },
+    {
+      "id": "300905-b-1777363349947",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363349.9472935,
+      "filled_at": 1777363349.9481719
+    },
+    {
+      "id": "300905-b-1777363409025",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363409.0253549,
+      "filled_at": 1777363409.0262716
+    },
+    {
+      "id": "300905-b-1777363774961",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363774.9615598,
+      "filled_at": 1777363774.9625247
+    },
+    {
+      "id": "300905-b-1777363819875",
+      "code": "300905",
+      "name": "宝丽迪",
+      "side": "buy",
+      "quantity": 100,
+      "price": 0.0,
+      "filled_price": 67.054,
+      "status": "filled",
+      "reason": "成交价67.054",
+      "created_at": 1777363819.875682,
+      "filled_at": 1777363819.876804
+    }
+  ],
+  "next_day_positions": {
+    "920471": 200,
+    "301261": 200,
+    "002845": 400,
+    "920156": 200,
+    "300905": 600
+  }
+}

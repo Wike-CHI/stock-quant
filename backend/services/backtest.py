@@ -158,12 +158,13 @@ def run_backtest(
     )
 
     metrics = result.metrics
+    raw = metrics._raw
     return {
         "code": code,
-        "total_return_pct": round(metrics.total_return_pct, 2),
-        "sharpe_ratio": round(metrics.sharpe_ratio, 2),
-        "max_drawdown_pct": round(metrics.max_drawdown_pct, 2),
-        "end_market_value": round(metrics.end_market_value, 2),
-        "total_trades": metrics.total_trades,
-        "win_rate": round(metrics.win_rate * 100, 2) if metrics.win_rate else 0,
+        "total_return_pct": round(raw.total_return_pct, 2),
+        "sharpe_ratio": round(raw.sharpe_ratio, 2),
+        "max_drawdown_pct": round(raw.max_drawdown_pct, 2),
+        "end_market_value": round(raw.end_market_value, 2),
+        "total_bars": raw.total_bars,
+        "win_rate": round(raw.win_rate, 2) if raw.win_rate else 0,
     }

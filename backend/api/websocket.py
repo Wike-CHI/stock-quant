@@ -1,23 +1,25 @@
 """
 WebSocket 实时行情推送
 
-单进程多线程：每个WS连接一个处理线程，
-通过 ThreadPool 管理定时拉取任务。
+优化点：
+1. diff-only 增量推送 — 只推送与上次不同的字段，减少序列化开销
+2. 每个连接独立维护 last_snapshot，避免全量比较
+3. 推送前检查连接状态，防止僵尸推送
 """
 import asyncio
 import json
 import logging
 import time
-from threading import Thread
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-import config
 from services import stock_data
 
 logger = logging.getLogger(__name__)
 
-PUSH_INTERVAL = 2  # 秒，更实时的推送
+PUSH_INTERVAL = 3   # seconds between pushes
+DIFF_FIELDS = ("price", "change_pct", "change_amount", "volume", "turnover",
+               "high", "low", "amplitude", "vol_ratio", "turnover_rate")
 
 
 class ConnectionManager:
@@ -36,18 +38,55 @@ class ConnectionManager:
 
     def unsubscribe(self, ws: WebSocket, codes: list[str]):
         if ws in self.active:
-            self.active.difference_update(codes)
+            self.active[ws].difference_update(codes)
 
 
 manager = ConnectionManager()
 
 
-def _fetch_quotes(codes: list[str]) -> list[dict]:
-    """同步拉取实时行情"""
+def _fetch_quotes(codes: list[str]) -> dict[str, dict]:
+    """返回 code -> record dict，便于 diff 比较"""
     if not codes:
-        return []
+        return {}
     df = stock_data.get_realtime_quote(codes)
-    return df.to_dict(orient="records")
+    if df.empty:
+        return {}
+    result = {}
+    for rec in df.to_dict(orient="records"):
+        code = rec.get("code")
+        if code:
+            result[code] = rec
+    return result
+
+
+def _compute_diff(new: dict[str, dict], old: dict[str, dict]) -> list[dict]:
+    """
+    增量 diff：只推送发生变化的字段。
+    新出现的股票全量推送，已有股票只推送变化字段。
+    """
+    patches = []
+    for code, new_rec in new.items():
+        if code not in old:
+            # 新增股票，全量推
+            patches.append(new_rec)
+            continue
+        old_rec = old[code]
+        patch = {"code": code}
+        changed = False
+        for field in DIFF_FIELDS:
+            nv = new_rec.get(field)
+            ov = old_rec.get(field)
+            # 浮点容差比较，避免微小精度抖动触发推送
+            if isinstance(nv, float) and isinstance(ov, float):
+                if abs(nv - ov) > 0.0001:
+                    patch[field] = nv
+                    changed = True
+            elif nv != ov:
+                patch[field] = nv
+                changed = True
+        if changed:
+            patches.append(patch)
+    return patches
 
 
 async def ws_handler(ws: WebSocket):
@@ -57,11 +96,14 @@ async def ws_handler(ws: WebSocket):
 
     loop = asyncio.get_event_loop()
     codes_subscribed: set[str] = set()
+    running = True
+    # 上次推送快照，用于 diff
+    last_snapshot: dict[str, dict] = {}
 
     async def _reader():
-        """读取客户端消息（订阅/取消订阅）"""
+        nonlocal running
         try:
-            while True:
+            while running:
                 raw = await ws.receive_text()
                 msg = json.loads(raw)
                 msg_type = msg.get("type", "")
@@ -70,29 +112,49 @@ async def ws_handler(ws: WebSocket):
                     new_codes = msg.get("codes", [])
                     codes_subscribed.update(new_codes)
                     manager.subscribe(ws, new_codes)
+                    # 订阅新股票时清除其快照，强制全量推送
+                    for c in new_codes:
+                        last_snapshot.pop(c, None)
                 elif msg_type == "unsubscribe":
                     rm_codes = msg.get("codes", [])
                     codes_subscribed.difference_update(rm_codes)
                     manager.unsubscribe(ws, rm_codes)
+                    for c in rm_codes:
+                        last_snapshot.pop(c, None)
                 elif msg_type == "ping":
-                    await ws.send_json({"type": "pong"})
+                    await ws.send_json({"type": "pong", "ts": int(time.time() * 1000)})
         except WebSocketDisconnect:
             pass
-        except Exception as e:
-            logger.warning("WS reader error: %s", e)
+        except Exception:
+            pass
+        finally:
+            running = False
 
     async def _pusher():
-        """定时推送行情数据"""
+        nonlocal running
         try:
-            while True:
+            while running:
                 if codes_subscribed:
-                    quotes = await loop.run_in_executor(None, _fetch_quotes, list(codes_subscribed))
-                    await ws.send_json({"type": "quotes", "data": quotes})
+                    new_quotes = await loop.run_in_executor(
+                        None, _fetch_quotes, list(codes_subscribed)
+                    )
+                    if running and new_quotes:
+                        patches = _compute_diff(new_quotes, last_snapshot)
+                        if patches:
+                            await ws.send_json({
+                                "type": "quotes",
+                                "data": patches,
+                                "ts": int(time.time() * 1000),
+                            })
+                        # 更新快照
+                        last_snapshot.update(new_quotes)
                 await asyncio.sleep(PUSH_INTERVAL)
         except WebSocketDisconnect:
             pass
         except Exception as e:
-            logger.warning("WS pusher error: %s", e)
+            logger.debug("WS pusher error: %s", e)
+        finally:
+            running = False
 
     try:
         await asyncio.gather(_reader(), _pusher())

@@ -8,6 +8,7 @@ from services import stock_data, pattern
 from services import bowl_rebound
 from services import backtest
 from services import virtual_trading
+from services import predict
 from services.thread_pool import ThreadPool
 
 logger = logging.getLogger(__name__)
@@ -182,3 +183,31 @@ def trading_settle():
 def trading_reset():
     """重置虚拟账户"""
     return virtual_trading.reset_account()
+
+
+# ===== 深度学习预测 =====
+
+@router.post("/stocks/{code}/train")
+def train_prediction_model(code: str, epochs: int = 50):
+    """训练 LSTM 预测模型"""
+    try:
+        return predict.train_model(code, epochs=epochs)
+    except Exception as e:
+        logger.error("Train failed for %s: %s", code, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stocks/{code}/predict")
+def stock_predict(code: str):
+    """获取个股趋势预测"""
+    try:
+        return predict.predict(code)
+    except Exception as e:
+        logger.error("Predict failed for %s: %s", code, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/model/status")
+def model_status():
+    """查询模型状态"""
+    return predict.get_model_status()

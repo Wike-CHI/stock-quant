@@ -28,6 +28,7 @@ def _make_bt_data(n=200, symbol="000001"):
 
     return pd.DataFrame({
         "date": dates.strftime("%Y-%m-%d"),
+        "timestamp": dates.astype("int64") // 10**6,
         "symbol": symbol,
         "open": opens, "close": closes,
         "high": closes + abs(np.random.randn(n) * 0.1),

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { StockInfo } from "../types";
 
@@ -13,11 +13,12 @@ export function StockList({ stocks, loading, onSelect, selectedCode }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState("");
 
-  const filtered = filter
-    ? stocks.filter(s =>
-        s.code.includes(filter) || s.name.includes(filter)
-      )
-    : stocks;
+  const filtered = useMemo(() =>
+    filter
+      ? stocks.filter(s => s.code.includes(filter) || s.name.includes(filter))
+      : stocks,
+    [stocks, filter]
+  );
 
   const virtualizer = useVirtualizer({
     count: filtered.length,

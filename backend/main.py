@@ -1,15 +1,15 @@
 import logging
-import sys
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 import config
 from api.routes import router
 from api.websocket import ws_handler
 from services.thread_pool import ThreadPool
+from services import stock_data
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -20,6 +20,18 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     pool = ThreadPool.get_instance()
+
+    # Pre-warm spot data on startup
+    stock_data.prewarm_spot()
+
+    # Start background refresh daemon thread
+    refresh_thread = threading.Thread(
+        target=stock_data.background_refresh,
+        daemon=True,
+        name="spot-refresh",
+    )
+    refresh_thread.start()
+
     yield
     pool.shutdown()
 

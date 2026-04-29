@@ -24,3 +24,4 @@ Thumbs.db
 *.pkl
 *.csv
 data/cache/
+.gstack/

@@ -4,22 +4,19 @@ import pandas as pd
 import numpy as np
 
 
-def _make_spot_df(n=10):
-    """构造模拟的 stock_zh_a_spot_em 返回数据"""
-    return pd.DataFrame({
-        "序号": range(n), "代码": [f"00000{i}" for i in range(n)],
-        "名称": [f"测试股{i}" for i in range(n)],
-        "最新价": [10.0 + i for i in range(n)],
-        "涨跌幅": [i * 0.5 - 1.0 for i in range(n)],
-        "涨跌额": [0.1] * n, "成交量": [100000] * n, "成交额": [1000000.0] * n,
-        "振幅": [2.0] * n, "最高": [11.0] * n, "最低": [9.0] * n,
-        "今开": [10.0] * n, "昨收": [10.0] * n,
-        "量比": [1.0] * n, "换手率": [1.5] * n,
-        "市盈率-动态": [20.0] * n, "市净率": [2.0] * n,
-        "总市值": [1e10] * n, "流通市值": [5e9] * n,
-        "涨速": [0.1] * n, "5分钟涨跌": [0.2] * n,
-        "60日涨跌幅": [5.0] * n, "年初至今涨跌幅": [3.0] * n,
-    })
+def _make_em_response(n=10):
+    """模拟东方财富 push2 API 响应"""
+    diff = []
+    for i in range(n):
+        diff.append({
+            "f2": 10.0 + i, "f3": i * 0.5 - 1.0, "f4": 0.1,
+            "f5": 100000, "f6": 1000000.0, "f7": 2.0,
+            "f8": 1.5, "f9": 20.0, "f10": 1.0,
+            "f12": f"00000{i}", "f14": f"测试股{i}",
+            "f15": 11.0, "f16": 9.0, "f17": 10.0, "f18": 10.0,
+            "f20": 1e10, "f21": 5e9, "f23": 2.0,
+        })
+    return {"data": {"total": n, "diff": diff}}
 
 
 def _make_hist_df(n=100):
@@ -44,15 +41,29 @@ def _make_hist_df(n=100):
     })
 
 
+def _mock_prewarm(mod, n=10):
+    """辅助：直接设置内存数据，跳过网络"""
+    resp = _make_em_response(n)
+    rows = []
+    for item in resp["data"]["diff"]:
+        row = {}
+        for fcode, col in mod.EM_FIELD_MAP.items():
+            val = item.get(fcode, "-")
+            row[col] = None if val == "-" else val
+        rows.append(row)
+    mod._spot_df = pd.DataFrame(rows)
+
+
 class TestSpotColumns:
     """验证列名映射完整性"""
 
-    def test_spot_columns_all_mapped(self):
-        from services.stock_data import SPOT_COLUMNS
+    def test_em_field_map_covers_required_columns(self):
+        from services.stock_data import EM_FIELD_MAP
 
-        raw_cols = _make_spot_df().columns.tolist()
-        for col in raw_cols:
-            assert col in SPOT_COLUMNS, f"未映射列: {col}"
+        required = {"code", "name", "price", "change_pct", "volume", "turnover",
+                    "high", "low", "open", "prev_close", "turnover_rate", "pe", "pb"}
+        for col in required:
+            assert col in EM_FIELD_MAP.values(), f"缺少映射: {col}"
 
     def test_hist_columns_all_mapped(self):
         from services.stock_data import HIST_COLUMNS
@@ -63,33 +74,62 @@ class TestSpotColumns:
 
 
 class TestCache:
-    """验证缓存机制"""
+    """验证内存缓存机制"""
 
-    def test_cache_miss_returns_none(self):
-        from services.stock_data import _get_cached
+    def test_prewarm_sets_spot_data(self):
+        import services.stock_data as mod
 
-        assert _get_cached("nonexistent_key") is None
+        _mock_prewarm(mod, 10)
+        with mod._spot_lock:
+            assert mod._spot_df is not None
+            assert len(mod._spot_df) == 10
 
-    def test_cache_set_and_get(self):
-        from services.stock_data import _set_cached, _get_cached
+    def test_get_stock_list_returns_from_memory(self):
+        import services.stock_data as mod
 
-        df = _make_spot_df()
-        _set_cached("test_key", df)
+        _mock_prewarm(mod, 10)
+        df = mod.get_a_stock_list()
+        assert len(df) == 10
+        assert "code" in df.columns
 
-        cached = _get_cached("test_key")
-        assert cached is not None
-        assert len(cached) == len(df)
+    def test_realtime_quote_filters_by_codes(self):
+        import services.stock_data as mod
+
+        _mock_prewarm(mod, 10)
+        df = mod.get_realtime_quote(["000000", "000001"])
+        assert len(df) == 2
+
+    def test_hist_cache(self):
+        import services.stock_data as mod
+        from unittest.mock import patch
+
+        mod._hist_cache_ts.clear()
+        mod._hist_cache_df.clear()
+
+        call_count = 0
+        def mock_hist(*a, **kw):
+            nonlocal call_count
+            call_count += 1
+            return _make_hist_df()
+
+        with patch.object(mod.ak, "stock_zh_a_hist", side_effect=mock_hist):
+            df1 = mod.get_stock_history("000001")
+            assert call_count == 1
+
+            df2 = mod.get_stock_history("000001")
+            assert call_count == 1  # cached
+            assert len(df1) == len(df2)
 
 
 class TestDataHelpers:
     """验证数据处理辅助函数"""
 
-    def test_make_spot_df_has_all_columns(self):
-        from services.stock_data import SPOT_COLUMNS
+    def test_make_em_response_has_all_fields(self):
+        from services.stock_data import EM_FIELD_MAP
 
-        df = _make_spot_df()
-        for col in SPOT_COLUMNS:
-            assert col in df.columns, f"模拟数据缺少列: {col}"
+        resp = _make_em_response()
+        for fcode in EM_FIELD_MAP:
+            assert fcode in resp["data"]["diff"][0], f"模拟数据缺少字段: {fcode}"
 
     def test_make_hist_df_has_all_columns(self):
         from services.stock_data import HIST_COLUMNS
