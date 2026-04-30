@@ -26,7 +26,7 @@ function loadBars(code: string, period: string): Promise<Array<{
     .then(res => res.ok ? res.json() : [])
     .then((data: Array<{ date: string; open: number; close: number; high: number; low: number; volume: number; turnover: number }>) =>
       data.map(d => ({
-        timestamp: new Date(d.date.includes("T") ? d.date : d.date + "T00:00:00+08:00").getTime(),
+        timestamp: new Date(d.date.includes("T") || d.date.includes(" ") ? d.date : d.date + "T00:00:00+08:00").getTime(),
         open: d.open, high: d.high, low: d.low, close: d.close,
         volume: d.volume, turnover: d.turnover,
       }))
