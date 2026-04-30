@@ -456,8 +456,11 @@ def get_stock_history(
         try:
             df = _fetch_history_direct(code, period, start_date, end_date)
         except Exception as e2:
-            logger.warning("direct history failed (%s), trying tencent", e2)
-            df = _fetch_history_tencent(code, period, start_date, end_date)
+            logger.warning("direct history failed (%s), trying tencent minute", e2)
+            if period in ("1m", "5m", "15m", "30m", "60m"):
+                df = _fetch_minute_tencent(code, period)
+            else:
+                df = _fetch_history_tencent(code, period, start_date, end_date)
 
     keep = [c for c in df.columns if c in ("date", "code", "open", "close", "high", "low", "volume", "turnover")]
     df = df[[c for c in keep if c in df.columns]]
@@ -579,5 +582,61 @@ def _fetch_history_tencent(code, period, start_date, end_date):
                 "turnover": float(item[6]) if len(item) > 6 and item[6] else None,
             })
         except (ValueError, TypeError, IndexError):
+            continue
+    return pd.DataFrame(rows)
+
+
+_TENCENT_MINUTE_MAP = {
+    "1m": "m1", "5m": "m5", "15m": "m15", "30m": "m30", "60m": "m60",
+}
+
+
+def _fetch_minute_tencent(code: str, period: str) -> pd.DataFrame:
+    """腾讯分钟线：使用 minute/query 端点，构造近似 OHLCV"""
+    mtype = _TENCENT_MINUTE_MAP.get(period, "m5")
+    prefix = "sh" if code.startswith(("6", "9")) else "sz"
+    var_name = f"{mtype}_{prefix}{code}"
+
+    r = _cffi_get("http://web.ifzq.gtimg.cn/appstock/app/minute/query", params={
+        "_var": var_name,
+        "code": f"{prefix}{code}",
+        "type": mtype,
+    }, timeout=10)
+    r.raise_for_status()
+
+    text = r.text
+    eq_pos = text.index("=") + 1
+    data = json.loads(text[eq_pos:])
+    stock_data = data.get("data", {}).get(f"{prefix}{code}", {})
+    raw_items = stock_data.get("data", {}).get("data", [])
+    if not raw_items:
+        return pd.DataFrame()
+
+    rows = []
+    prev_close = None
+    for line in raw_items:
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        try:
+            time_str = parts[0]
+            close = float(parts[1])
+            vol = int(float(parts[2]))
+            turnover = float(parts[3]) if len(parts) > 3 else None
+
+            today = time.strftime("%Y-%m-%d")
+            full_time = f"{today} {time_str[:2]}:{time_str[2:]}"
+
+            open_ = prev_close if prev_close is not None else close
+            high = max(open_, close)
+            low = min(open_, close)
+
+            rows.append({
+                "date": full_time, "open": open_, "close": close,
+                "high": high, "low": low,
+                "volume": vol, "turnover": turnover,
+            })
+            prev_close = close
+        except (ValueError, IndexError):
             continue
     return pd.DataFrame(rows)
