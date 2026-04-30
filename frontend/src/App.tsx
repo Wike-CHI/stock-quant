@@ -83,7 +83,7 @@ export default function App() {
     }}>
       <Header connected={connected} onRefresh={refresh} />
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ width: 420, borderRight: "1px solid #21262d", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ width: 520, borderRight: "1px solid #21262d", flexShrink: 0, display: "flex", flexDirection: "column" }}>
           <StockFilter filter={filter} onChange={setFilter} />
           <StockList
             stocks={stocks}

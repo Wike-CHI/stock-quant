@@ -194,6 +194,8 @@ def _fetch_spot_tencent() -> pd.DataFrame:
                         "prev_close": float(parts[4]) if parts[4] else None,
                         "open": float(parts[5]) if parts[5] else None,
                         "volume": int(float(parts[6])) if parts[6] else None,
+                        "buy_vol": int(float(parts[7])) if len(parts) > 7 and parts[7] else None,
+                        "sell_vol": int(float(parts[8])) if len(parts) > 8 and parts[8] else None,
                         "turnover": float(parts[37]) if len(parts) > 37 and parts[37] else None,
                         "high": float(parts[33]) if len(parts) > 33 and parts[33] else None,
                         "low": float(parts[34]) if len(parts) > 34 and parts[34] else None,

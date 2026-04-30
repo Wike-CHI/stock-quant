@@ -9,6 +9,8 @@ export interface StockInfo {
   low: number;
   open: number;
   prev_close: number;
+  buy_vol?: number;
+  sell_vol?: number;
   turnover_rate?: number;
   vol_ratio?: number;
   pe?: number;
