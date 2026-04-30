@@ -320,7 +320,7 @@ def _fetch_spot() -> pd.DataFrame:
         df = _fetch_spot_clist()
         if not df.empty:
             logger.info("Fetched %d stocks via clist in %.2fs", len(df), time.time() - t0)
-            return df
+            return _enrich_limit_status(df)
     except Exception as e:
         logger.warning("clist failed (%s), trying ulist", e)
 
@@ -329,7 +329,7 @@ def _fetch_spot() -> pd.DataFrame:
         df = _fetch_spot_ulist()
         if not df.empty:
             logger.info("Fetched %d stocks via ulist in %.2fs", len(df), time.time() - t0)
-            return df
+            return _enrich_limit_status(df)
     except Exception as e:
         logger.warning("ulist failed (%s), trying tencent", e)
 
@@ -338,7 +338,7 @@ def _fetch_spot() -> pd.DataFrame:
         df = _fetch_spot_tencent()
         if not df.empty:
             logger.info("Fetched %d stocks via tencent in %.2fs", len(df), time.time() - t0)
-            return df
+            return _enrich_limit_status(df)
     except Exception as e:
         logger.error("tencent also failed: %s", e)
 
@@ -430,6 +430,61 @@ def get_top_gainers(limit: int = 50) -> pd.DataFrame:
         return df.head(limit).copy()
     finally:
         _spot_rwlock.release_read()
+
+
+def get_limit_pct(code: str) -> float:
+    """根据股票代码判断涨跌停幅度"""
+    if code.startswith(("68", "30")):
+        return 20.0   # 科创板 + 创业板
+    if code.startswith(("8", "4")):
+        return 30.0   # 北交所
+    return 10.0       # 主板/中小板
+
+
+def get_stock_status(price: float | None, prev_close: float | None, code: str) -> str:
+    """判断个股当前状态：limit_up / limit_down / near_limit / normal"""
+    if price is None or prev_close is None or prev_close == 0:
+        return "normal"
+    limit_pct = get_limit_pct(code)
+    limit_up_price = round(prev_close * (1 + limit_pct / 100), 2)
+    limit_down_price = round(prev_close * (1 - limit_pct / 100), 2)
+    if price >= limit_up_price:
+        return "limit_up"
+    if price <= limit_down_price:
+        return "limit_down"
+    chg = (price - prev_close) / prev_close * 100
+    if chg >= limit_pct * 0.85:
+        return "near_limit_up"
+    if chg <= -limit_pct * 0.85:
+        return "near_limit_down"
+    return "normal"
+
+
+def _enrich_limit_status(df: pd.DataFrame) -> pd.DataFrame:
+    """为行情 DataFrame 补充涨跌停价格和状态列"""
+    if df.empty:
+        return df
+    df = df.copy()
+    codes = df["code"].astype(str)
+    prices = df["price"] if "price" in df.columns else None
+    prevs = df["prev_close"] if "prev_close" in df.columns else None
+    if prices is None or prevs is None:
+        return df
+
+    limit_pcts = codes.apply(get_limit_pct)
+    df["limit_pct"] = limit_pcts
+    df["limit_up_price"] = (prevs * (1 + limit_pcts / 100)).round(2)
+    df["limit_down_price"] = (prevs * (1 - limit_pcts / 100)).round(2)
+
+    statuses = []
+    for i in range(len(df)):
+        statuses.append(get_stock_status(
+            prices.iloc[i] if hasattr(prices, 'iloc') else prices[i],
+            prevs.iloc[i] if hasattr(prevs, 'iloc') else prevs[i],
+            codes.iloc[i] if hasattr(codes, 'iloc') else codes[i],
+        ))
+    df["status"] = statuses
+    return df
 
 
 def _patch_today_from_spot(df: pd.DataFrame, code: str):

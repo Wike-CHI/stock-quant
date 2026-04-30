@@ -17,6 +17,10 @@ export interface StockInfo {
   pb?: number;
   total_mv?: number;
   circ_mv?: number;
+  limit_pct?: number;
+  limit_up_price?: number;
+  limit_down_price?: number;
+  status?: string;  // "limit_up" | "limit_down" | "near_limit_up" | "near_limit_down" | "normal"
 }
 
 export interface PatternMatch {

@@ -16,6 +16,13 @@ function fmtVol(v?: number): string {
   return String(v);
 }
 
+const STATUS_COLORS: Record<string, { bg: string; badge: string; text: string }> = {
+  limit_up:       { bg: "#3d1111", badge: "#b71c1c", text: "涨停" },
+  limit_down:     { bg: "#0d3311", badge: "#1b5e20", text: "跌停" },
+  near_limit_up:  { bg: "#2d1810", badge: "#c62828", text: "逼近涨停" },
+  near_limit_down:{ bg: "#102018", badge: "#2e7d32", text: "逼近跌停" },
+};
+
 export function StockList({ stocks, loading, onSelect, selectedCode }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState("");
@@ -76,6 +83,15 @@ export function StockList({ stocks, loading, onSelect, selectedCode }: Props) {
               const sell = s.sell_vol ?? 0;
               const ratio = buy && sell ? buy / sell : 0;
               const signal = ratio > 1.5 ? "买强" : ratio < 0.67 ? "卖强" : ratio >= 1 ? "买多" : "卖多";
+              const statusStyle = s.status ? STATUS_COLORS[s.status] : null;
+
+              const rowBg = selected
+                ? "#1e3a5f"
+                : statusStyle
+                  ? statusStyle.bg
+                  : vRow.index % 2 === 0
+                    ? "#0d1117"
+                    : "#161b22";
 
               return (
                 <div
@@ -85,15 +101,24 @@ export function StockList({ stocks, loading, onSelect, selectedCode }: Props) {
                     position: "absolute", top: vRow.start, left: 0, right: 0,
                     height: vRow.size, display: "flex", alignItems: "center",
                     padding: "0 12px", cursor: "pointer",
-                    background: selected ? "#1e3a5f" : vRow.index % 2 === 0 ? "#0d1117" : "#161b22",
+                    background: rowBg,
                     borderBottom: "1px solid #21262d", fontSize: 12,
                   }}
                 >
                   <span style={{ width: 80, color: "#58a6ff", fontFamily: "monospace" }}>
                     {s.code}
                   </span>
-                  <span style={{ flex: 1, color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ flex: 1, color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
                     {s.name}
+                    {statusStyle && (
+                      <span style={{
+                        padding: "1px 5px", borderRadius: 3, fontSize: 10, fontWeight: 700,
+                        background: statusStyle.badge, color: "#fff",
+                        flexShrink: 0,
+                      }}>
+                        {statusStyle.text}
+                      </span>
+                    )}
                   </span>
                   <span style={{ width: 70, textAlign: "right", color, fontWeight: 600 }}>
                     {s.price?.toFixed(2) ?? "--"}
