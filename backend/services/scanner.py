@@ -18,6 +18,7 @@ import pandas as pd
 from services.alert_store import store, Alert
 from services.stock_data import get_a_stock_list, get_stock_history
 from services.bowl_rebound import detect_bowl_rebound
+from services.trading_calendar import is_trading_time
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +272,8 @@ def scan_hist_async(df: pd.DataFrame):
 
 def run_scan():
     """每次 spot 数据刷新后调用"""
+    if not is_trading_time():
+        return
     from services import stock_data
     try:
         df = stock_data.get_a_stock_list()

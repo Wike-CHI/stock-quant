@@ -10,6 +10,8 @@ import akshare as ak
 import pandas as pd
 from curl_cffi import requests as cffi_requests
 
+from services.trading_calendar import is_trading_time
+
 logger = logging.getLogger(__name__)
 
 EM_FIELD_MAP = {
@@ -375,6 +377,8 @@ def background_refresh():
     global _spot_df
     while True:
         time.sleep(SPOT_REFRESH_INTERVAL)
+        if not is_trading_time():
+            continue
         try:
             df = _fetch_spot()
             _spot_rwlock.acquire_write()
@@ -428,6 +432,40 @@ def get_top_gainers(limit: int = 50) -> pd.DataFrame:
         _spot_rwlock.release_read()
 
 
+def _patch_today_from_spot(df: pd.DataFrame, code: str):
+    """用实时 spot 数据覆盖今日K线的最后一日 bar，确保K线图与行情列表同源"""
+    today_str = pd.Timestamp.now().strftime("%Y-%m-%d")
+    if df.iloc[-1]["date"] != today_str:
+        return
+
+    _spot_rwlock.acquire_read()
+    try:
+        if _spot_df is None or _spot_df.empty:
+            return
+        spot_row = _spot_df[_spot_df["code"] == code]
+        if spot_row.empty:
+            return
+        s = spot_row.iloc[0]
+    finally:
+        _spot_rwlock.release_read()
+
+    idx = df.index[-1]
+    if s.get("open") is not None:
+        df.at[idx, "open"] = float(s["open"])
+    if s.get("price") is not None:
+        df.at[idx, "close"] = float(s["price"])
+    if s.get("high") is not None:
+        df.at[idx, "high"] = float(s["high"])
+    if s.get("low") is not None:
+        df.at[idx, "low"] = float(s["low"])
+    if s.get("volume") is not None:
+        df.at[idx, "volume"] = int(s["volume"])
+    if s.get("turnover") is not None:
+        df.at[idx, "turnover"] = float(s["turnover"])
+    if s.get("change_pct") is not None:
+        df.at[idx, "change_pct"] = float(s["change_pct"])
+
+
 def get_stock_history(
     code: str,
     period: str = "daily",
@@ -473,6 +511,10 @@ def get_stock_history(
     ohlc = [c for c in ("open", "close", "high", "low") if c in df.columns]
     if ohlc:
         df = df.dropna(subset=ohlc).reset_index(drop=True)
+
+    # 统一数据源：用实时 spot 数据修补今日K线，确保与行情列表一致
+    if period == "daily" and not df.empty:
+        _patch_today_from_spot(df, code)
 
     _hist_cache_df[cache_key] = df.copy()
     _hist_cache_ts[cache_key] = time.time()

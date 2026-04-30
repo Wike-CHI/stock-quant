@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from services import stock_data
 from services.data_store import save_daily_bars, save_minute_bars, log_collection
+from services.trading_calendar import is_trading_time
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,8 @@ def background_collector(daily_interval: int = COLLECT_INTERVAL,
                 daily_interval, include_minute)
     while True:
         time.sleep(daily_interval)
+        if not is_trading_time():
+            continue
         try:
             codes = _get_all_codes()
             collect_daily(codes)
