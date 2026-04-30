@@ -25,3 +25,9 @@ Thumbs.db
 *.csv
 data/cache/
 .gstack/
+
+# SQLite data
+backend/data/
+
+# PyTorch models
+models/

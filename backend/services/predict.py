@@ -54,6 +54,8 @@ class StockLSTM(nn.Module):
 
 def _compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+    for col in ("open", "high", "low", "close", "volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     c, h, l, v = df["close"], df["high"], df["low"], df["volume"]
 
     df["ma5"] = c.rolling(5).mean()
@@ -111,7 +113,7 @@ def train_model(code: str, epochs: int = 50, lr: float = 1e-3) -> dict:
         return {"error": f"数据不足: {len(df)} 行"}
 
     df = _compute_features(df)
-    df = df.dropna().reset_index(drop=True)
+    df = df.dropna(subset=FEATURE_COLS).reset_index(drop=True)
     if len(df) < SEQ_LEN + 30:
         return {"error": f"有效数据不足: {len(df)} 行"}
 
@@ -178,7 +180,7 @@ def predict(code: str) -> dict:
         return {"error": "数据不足"}
 
     df = _compute_features(df)
-    df = df.dropna().reset_index(drop=True)
+    df = df.dropna(subset=FEATURE_COLS).reset_index(drop=True)
     if len(df) < SEQ_LEN:
         return {"error": "有效数据不足"}
 
@@ -187,7 +189,7 @@ def predict(code: str) -> dict:
     if cached and cached[2] == mtime:
         model, scaler, _ = cached
     else:
-        ckpt = torch.load(model_path, map_location=_device, weights_only=True)
+        ckpt = torch.load(model_path, map_location=_device, weights_only=False)
         model = StockLSTM().to(_device)
         model.load_state_dict(ckpt["model"])
         model.eval()

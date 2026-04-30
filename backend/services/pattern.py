@@ -221,6 +221,13 @@ def analyze_stock(code: str, name: str = "", period_days: int = 120) -> list[dic
         df = df.tail(period_days)
     df = df.reset_index(drop=True)
 
+    for col in ("open", "close", "high", "low", "volume"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=[c for c in ("open", "close", "high", "low") if c in df.columns]).reset_index(drop=True)
+    if df.empty:
+        return []
+
     all_patterns: list[PatternMatch] = []
     all_patterns.extend(detect_limit_up_streak(df, code, name))
     all_patterns.extend(detect_ma_bullish_alignment(df, code, name))

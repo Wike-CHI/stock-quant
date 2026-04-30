@@ -122,3 +122,16 @@ See [docs/golden-principles.md](docs/golden-principles.md) — these are non-neg
 - **Loop detection**: Blocks after 5 edits to same file
 - **Pre-completion checklist**: Verifies before marking done
 - **Context injection**: Adds environment info at session start
+
+## Harness: 量化策略全栈开发
+
+**目标:** 协调策略设计、数据管线、可视化三端协作的量化功能开发
+
+**触发:** 策略开发、数据源扩展、图表开发、跨层新功能时使用 `quant-orchestrate` 技能。简单单文件修改或 Sprint 工作流可直接操作。
+
+**变更历史:**
+| 日期 | 变更内容 | 对象 | 事由 |
+|------|----------|------|------|
+| 2026-04-29 | 初始 harness 构建 | 全部 | - |
+| 2026-04-29 | 新增 quant-strategist/data-pipeline/frontend-viz agent | agents/ | 量化领域角色分工 |
+| 2026-04-29 | 新增 quant-orchestrate/quant-strategy-dev/akshare-patterns | skills/ | 编排器 + 量化开发技能 |

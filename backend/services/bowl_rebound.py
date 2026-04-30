@@ -174,7 +174,7 @@ def detect_bowl_rebound(df: pd.DataFrame, code: str, name: str, params: dict | N
                 "J": round(float(row["J"]), 2) if not pd.isna(row["J"]) else None,
                 "short_trend": round(float(row["short_trend"]), 2),
                 "bull_bear": round(float(row["bull_bear"]), 2),
-                "has_key_candle": has_key_candle,
+                "has_key_candle": bool(has_key_candle),
                 "similarity": sim,
             },
         ))

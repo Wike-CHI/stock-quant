@@ -58,6 +58,7 @@ PERIOD_CONFIG = {
 
 _hist_cache_ts: dict[str, float] = {}
 _hist_cache_df: dict[str, pd.DataFrame] = {}
+_HIST_CACHE_MAX = 2000
 
 _spot_df: Optional[pd.DataFrame] = None
 SPOT_REFRESH_INTERVAL = 30
@@ -438,7 +439,10 @@ def get_stock_history(
         return pd.DataFrame()
 
     ak_period, cache_ttl = cfg
-    cache_key = f"hist-{code}-{period}-{start_date}-{end_date}-{adjust}"
+    if period in ("1m", "5m", "15m", "30m", "60m"):
+        cache_key = f"hist-{code}-{period}-{adjust}"
+    else:
+        cache_key = f"hist-{code}-{period}-{start_date}-{end_date}-{adjust}"
     now = time.time()
     if cache_key in _hist_cache_df and (now - _hist_cache_ts[cache_key]) < cache_ttl:
         return _hist_cache_df[cache_key].copy()
@@ -461,10 +465,16 @@ def get_stock_history(
     if "change_pct" not in df.columns and "close" in df.columns and "prev_close" not in df.columns:
         df["change_pct"] = df["close"].pct_change().fillna(0) * 100
 
-    df = df.fillna(0)
+    ohlc = [c for c in ("open", "close", "high", "low") if c in df.columns]
+    if ohlc:
+        df = df.dropna(subset=ohlc).reset_index(drop=True)
 
     _hist_cache_df[cache_key] = df.copy()
     _hist_cache_ts[cache_key] = time.time()
+    while len(_hist_cache_df) > _HIST_CACHE_MAX:
+        oldest = min(_hist_cache_ts, key=_hist_cache_ts.get)
+        _hist_cache_df.pop(oldest, None)
+        _hist_cache_ts.pop(oldest, None)
     return df
 
 
@@ -496,7 +506,7 @@ def _fetch_history_direct(code, period, start_date, end_date):
     params = {
         "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
-        "ut": "7eea3edcaed734bea9cbfc24409ed989",
+        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
         "klt": klt, "fqt": 1, "secid": secid,
         "beg": start_date.replace("-", "") if start_date else "20240101",
         "end": end_date.replace("-", "") if end_date else "20500101",
@@ -559,11 +569,15 @@ def _fetch_history_tencent(code, period, start_date, end_date):
 
     rows = []
     for item in klines:
-        if len(item) < 6:
+        if not isinstance(item, (list, tuple)) or len(item) < 6:
             continue
-        rows.append({
-            "date": item[0], "open": float(item[1]), "close": float(item[2]),
-            "high": float(item[3]), "low": float(item[4]),
-            "volume": int(float(item[5])),
-        })
+        try:
+            rows.append({
+                "date": item[0], "open": float(item[1]), "close": float(item[2]),
+                "high": float(item[3]), "low": float(item[4]),
+                "volume": int(float(item[5])),
+                "turnover": float(item[6]) if len(item) > 6 and item[6] else None,
+            })
+        except (ValueError, TypeError, IndexError):
+            continue
     return pd.DataFrame(rows)

@@ -11,6 +11,7 @@ from api.websocket import ws_handler
 from services.thread_pool import ThreadPool
 from services import stock_data
 from services import scanner
+from services import collector
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -35,6 +36,15 @@ async def lifespan(app: FastAPI):
         name="spot-refresh",
     )
     refresh_thread.start()
+
+    # Start background data collector (SQLite persistence)
+    collector_thread = threading.Thread(
+        target=collector.background_collector,
+        kwargs={"daily_interval": config.COLLECT_INTERVAL, "include_minute": False},
+        daemon=True,
+        name="data-collector",
+    )
+    collector_thread.start()
 
     yield
     pool.shutdown()

@@ -4,6 +4,7 @@ import { API_BASE } from "../types";
 
 interface Props {
   code: string | null;
+  active?: boolean;
 }
 
 const PERIODS = [
@@ -25,7 +26,7 @@ function loadBars(code: string, period: string): Promise<Array<{
     .then(res => res.ok ? res.json() : [])
     .then((data: Array<{ date: string; open: number; close: number; high: number; low: number; volume: number; turnover: number }>) =>
       data.map(d => ({
-        timestamp: new Date(d.date).getTime(),
+        timestamp: new Date(d.date.includes("T") ? d.date : d.date + "T00:00:00+08:00").getTime(),
         open: d.open, high: d.high, low: d.low, close: d.close,
         volume: d.volume, turnover: d.turnover,
       }))
@@ -33,22 +34,21 @@ function loadBars(code: string, period: string): Promise<Array<{
     .catch(() => []);
 }
 
-export function KlineChart({ code }: Props) {
+export function KlineChart({ code, active = true }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof init> | null>(null);
   const chartIdRef = useRef<string>("");
   const [activePeriod, setActivePeriod] = useState("daily");
 
-  // code 变化时：重建 chart
   useEffect(() => {
-    if (!containerRef.current || !code) return;
+    if (!containerRef.current || !code || !active) return;
 
-    const chartId = `kline-${code}`;
+    const chartId = `kline-${code}-${Date.now()}`;
     containerRef.current.id = chartId;
     chartIdRef.current = chartId;
 
     if (chartRef.current) {
-      try { dispose(chartId); } catch { /* */ }
+      try { dispose(chartIdRef.current); } catch { /* */ }
     }
 
     const chart = init(chartId);
@@ -83,26 +83,11 @@ export function KlineChart({ code }: Props) {
     });
 
     return () => {
-      try { dispose(chartId); } catch { /* */ }
+      try { dispose(chartIdRef.current); } catch { /* */ }
       chartRef.current = null;
       chartIdRef.current = "";
     };
-  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // activePeriod 变化时：复用 chart 实例，只更新周期和数据
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart || !code || !chartIdRef.current) return;
-
-    const periodConfig = PERIODS.find(p => p.value === activePeriod) || PERIODS[5];
-    chart.setPeriod({ span: periodConfig.span, type: periodConfig.type });
-
-    chart.setDataLoader({
-      getBars: ({ callback }) => {
-        loadBars(code, activePeriod).then(callback);
-      },
-    });
-  }, [activePeriod, code]);
+  }, [code, activePeriod, active]);
 
   const handlePeriodChange = useCallback((period: string) => {
     setActivePeriod(period);
