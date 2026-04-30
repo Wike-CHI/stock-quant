@@ -46,6 +46,32 @@ CREATE TABLE IF NOT EXISTS collection_log (
 
 CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_bar(date);
 CREATE INDEX IF NOT EXISTS idx_daily_code ON daily_bar(code);
+
+CREATE TABLE IF NOT EXISTS alert (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,
+    name TEXT DEFAULT '',
+    alert_type TEXT NOT NULL,
+    message TEXT DEFAULT '',
+    details TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_alert_code ON alert(code);
+CREATE INDEX IF NOT EXISTS idx_alert_time ON alert(created_at);
+
+CREATE TABLE IF NOT EXISTS pattern_cache (
+    code TEXT NOT NULL,
+    results TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (code)
+);
+
+CREATE TABLE IF NOT EXISTS prediction_cache (
+    code TEXT NOT NULL,
+    results TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (code)
+);
 """
 
 _conn: sqlite3.Connection | None = None
@@ -174,3 +200,75 @@ def export_json(code: str = "", start_date: str = "", end_date: str = "") -> str
     if df.empty:
         return "[]"
     return df.to_json(orient="records", date_format="iso")
+
+
+# ── 预警持久化 ──────────────────────────────────
+
+def save_alert(code: str, name: str, alert_type: str, message: str, details: str = "{}"):
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO alert (code, name, alert_type, message, details) VALUES (?, ?, ?, ?, ?)",
+        (code, name, alert_type, message, details),
+    )
+    conn.commit()
+
+
+def get_alerts(limit: int = 100, code: str = "") -> list[dict]:
+    conn = _get_conn()
+    sql = "SELECT * FROM alert"
+    params: list = []
+    if code:
+        sql += " WHERE code = ?"
+        params.append(code)
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
+    cols = [d[0] for d in conn.execute("SELECT * FROM alert LIMIT 0").description]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def clear_alerts():
+    conn = _get_conn()
+    conn.execute("DELETE FROM alert")
+    conn.commit()
+
+
+# ── 规律缓存 ──────────────────────────────────
+
+def save_pattern_cache(code: str, results: list[dict]):
+    conn = _get_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO pattern_cache (code, results) VALUES (?, ?)",
+        (code, json.dumps(results, ensure_ascii=False)),
+    )
+    conn.commit()
+
+
+def load_pattern_cache(code: str) -> list[dict] | None:
+    conn = _get_conn()
+    row = conn.execute("SELECT results FROM pattern_cache WHERE code = ?", (code,)).fetchone()
+    if row:
+        return json.loads(row[0])
+    return None
+
+
+# ── 预测缓存 ──────────────────────────────────
+
+def save_prediction_cache(code: str, results: dict):
+    conn = _get_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO prediction_cache (code, results) VALUES (?, ?)",
+        (code, json.dumps(results, ensure_ascii=False)),
+    )
+    conn.commit()
+
+
+def load_prediction_cache(code: str, max_age_sec: float = 300) -> dict | None:
+    conn = _get_conn()
+    row = conn.execute("SELECT results, updated_at FROM prediction_cache WHERE code = ?", (code,)).fetchone()
+    if not row:
+        return None
+    updated = time.mktime(time.strptime(row[1], "%Y-%m-%d %H:%M:%S"))
+    if time.time() - updated > max_age_sec:
+        return None
+    return json.loads(row[0])

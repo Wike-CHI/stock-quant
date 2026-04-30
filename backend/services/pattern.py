@@ -17,6 +17,7 @@ import pandas as pd
 
 from services.stock_data import get_stock_history
 from services.bowl_rebound import detect_bowl_rebound
+from services.data_store import load_pattern_cache, save_pattern_cache
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +212,13 @@ def detect_v_shape_reversal(df: pd.DataFrame, code: str, name: str, lookback: in
     return results
 
 
-def analyze_stock(code: str, name: str = "", period_days: int = 120) -> list[dict]:
+def analyze_stock(code: str, name: str = "", period_days: int = 120, use_cache: bool = True) -> list[dict]:
     """对单只股票执行全量模式分析"""
+    if use_cache:
+        cached = load_pattern_cache(code)
+        if cached is not None:
+            return cached
+
     df = get_stock_history(code)
     if df.empty:
         return []
@@ -238,7 +244,12 @@ def analyze_stock(code: str, name: str = "", period_days: int = 120) -> list[dic
     bowl_signals = detect_bowl_rebound(df, code, name)
     all_patterns.extend(bowl_signals)
 
-    return [p.__dict__ for p in all_patterns]
+    results = [p.__dict__ for p in all_patterns]
+    try:
+        save_pattern_cache(code, results)
+    except Exception:
+        pass
+    return results
 
 
 def batch_analyze(codes: list[tuple[str, str]], period_days: int = 120) -> dict[str, list[dict]]:

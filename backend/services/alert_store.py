@@ -1,11 +1,12 @@
 """
-预警存储 — 内存环形缓冲 + 去重 + 冷却期
+预警存储 — SQLite 持久化 + 内存去重冷却期
 
 设计原则：
 - 同一股票同一预警类型，冷却期内不重复触发
-- 最多保留 MAX_ALERTS 条历史记录（环形覆盖）
+- 所有预警写入 SQLite，重启不丢失
 - 线程安全，供 scanner 和 WS handler 并发访问
 """
+import json
 import threading
 import time
 from collections import deque
@@ -69,10 +70,17 @@ class AlertStore:
             self._cooldown[key] = now
             self._alerts.appendleft(alert)
             listeners = list(self._listeners)
-            # 清理超过 2 倍冷却期的过期条目，防止内存泄漏
             expired_keys = [k for k, v in self._cooldown.items() if now - v > COOLDOWN_SECONDS * 2]
             for k in expired_keys:
                 del self._cooldown[k]
+
+        # 持久化到 SQLite
+        try:
+            from services.data_store import save_alert
+            save_alert(alert.code, alert.name, alert.alert_type, alert.message,
+                       json.dumps(alert.to_dict(), ensure_ascii=False))
+        except Exception:
+            pass
 
         # 回调在锁外执行，避免死锁
         for cb in listeners:
@@ -83,6 +91,13 @@ class AlertStore:
         return True
 
     def get_recent(self, limit: int = 100, code: str = "") -> list[dict]:
+        # 优先从 SQLite 读取（持久化数据）
+        try:
+            from services.data_store import get_alerts
+            return get_alerts(limit=limit, code=code)
+        except Exception:
+            pass
+        # fallback 到内存
         with self._lock:
             alerts = list(self._alerts)
         if code:
@@ -93,6 +108,11 @@ class AlertStore:
         with self._lock:
             self._alerts.clear()
             self._cooldown.clear()
+        try:
+            from services.data_store import clear_alerts
+            clear_alerts()
+        except Exception:
+            pass
 
 
 # 全局单例

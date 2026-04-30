@@ -15,6 +15,7 @@ import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
 
 from services.stock_data import get_stock_history
+from services.data_store import load_prediction_cache, save_prediction_cache
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,10 @@ def train_model(code: str, epochs: int = 50, lr: float = 1e-3) -> dict:
 
 
 def predict(code: str) -> dict:
+    cached = load_prediction_cache(code, max_age_sec=300)
+    if cached is not None:
+        return cached
+
     model_path = MODEL_DIR / f"{code}.pt"
     if not model_path.exists():
         return {"error": f"模型未训练: {code}", "need_train": True}
@@ -217,13 +222,18 @@ def predict(code: str) -> dict:
             "signal": "看涨" if probs[i] > 0.6 else ("看跌" if probs[i] < 0.4 else "中性"),
         })
 
-    return {
+    result = {
         "code": code,
         "last_date": last_date,
         "last_close": round(float(last_close), 2),
         "predictions": predictions,
         "model": "LSTM",
     }
+    try:
+        save_prediction_cache(code, result)
+    except Exception:
+        pass
+    return result
 
 
 def get_model_status() -> dict:
