@@ -11,6 +11,7 @@ import { TradingPanel } from "./components/TradingPanel";
 import { AlertPanel } from "./components/AlertPanel";
 import type { AlertItem } from "./components/AlertPanel";
 import { DatasetPanel } from "./components/DatasetPanel";
+import { FuturesPage } from "./components/FuturesPage";
 import { useStockList, usePatternAnalysis } from "./hooks/useStockData";
 import { useWebSocket } from "./hooks/useWebSocket";
 import type { StockInfo } from "./types";
@@ -48,6 +49,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 });
 
 export default function App() {
+  const [mode, setMode] = useState<"stock" | "futures">("stock");
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER);
   const { stocks, loading, refresh, applyQuotePatch } = useStockList(200, filter);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -81,57 +83,67 @@ export default function App() {
       display: "flex", flexDirection: "column", height: "100vh",
       background: "#0d1117", color: "#c9d1d9", fontFamily: "system-ui, sans-serif",
     }}>
-      <Header connected={connected} onRefresh={refresh} />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ width: 520, borderRight: "1px solid #21262d", flexShrink: 0, display: "flex", flexDirection: "column" }}>
-          <StockFilter filter={filter} onChange={setFilter} />
-          <StockList
-            stocks={stocks}
-            loading={loading}
-            onSelect={handleSelect}
-            selectedCode={selectedCode}
-          />
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <AlertPanel newAlert={latestAlert} onSelectCode={handleSelect} />
-          <div style={{
-            display: "flex", gap: 0,
-            borderBottom: "1px solid #21262d",
-            padding: "0 16px", flexShrink: 0,
-          }}>
-            {TABS.map(t => (
-              <div
-                key={t.key}
-                role="tab"
-                style={tabStyle(activeTab === t.key)}
-                onClick={() => setActiveTab(t.key)}
-              >
-                {t.label}
+      <Header
+        connected={connected}
+        onRefresh={refresh}
+        mode={mode}
+        onModeChange={setMode}
+      />
+
+      {mode === "futures" ? (
+        <FuturesPage />
+      ) : (
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <div style={{ width: 520, borderRight: "1px solid #21262d", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+            <StockFilter filter={filter} onChange={setFilter} />
+            <StockList
+              stocks={stocks}
+              loading={loading}
+              onSelect={handleSelect}
+              selectedCode={selectedCode}
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <AlertPanel newAlert={latestAlert} onSelectCode={handleSelect} />
+            <div style={{
+              display: "flex", gap: 0,
+              borderBottom: "1px solid #21262d",
+              padding: "0 16px", flexShrink: 0,
+            }}>
+              {TABS.map(t => (
+                <div
+                  key={t.key}
+                  role="tab"
+                  style={tabStyle(activeTab === t.key)}
+                  onClick={() => setActiveTab(t.key)}
+                >
+                  {t.label}
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: 1, overflow: "auto", position: "relative" }}>
+              <div style={{ display: activeTab === "pattern" ? "block" : "none" }}>
+                <PatternPanel patterns={patterns} loading={patternLoading} selectedCode={selectedCode} />
               </div>
-            ))}
-          </div>
-          <div style={{ flex: 1, overflow: "auto", position: "relative" }}>
-            <div style={{ display: activeTab === "pattern" ? "block" : "none" }}>
-              <PatternPanel patterns={patterns} loading={patternLoading} selectedCode={selectedCode} />
-            </div>
-            <div style={{ display: activeTab === "kline" ? "block" : "none" }}>
-              <KlineChart code={selectedCode} active={activeTab === "kline"} />
-            </div>
-            <div style={{ display: activeTab === "dataset" ? "block" : "none" }}>
-              <DatasetPanel />
-            </div>
-            <div style={{ display: activeTab === "backtest" ? "block" : "none" }}>
-              <BacktestPanel selectedCode={selectedCode} />
-            </div>
-            <div style={{ display: activeTab === "trading" ? "block" : "none" }}>
-              <TradingPanel selectedCode={selectedCode} selectedName={selectedStock?.name} />
-            </div>
-            <div style={{ display: activeTab === "predict" ? "block" : "none" }}>
-              <PredictionPanel selectedCode={selectedCode} />
+              <div style={{ display: activeTab === "kline" ? "block" : "none" }}>
+                <KlineChart code={selectedCode} active={activeTab === "kline"} />
+              </div>
+              <div style={{ display: activeTab === "dataset" ? "block" : "none" }}>
+                <DatasetPanel />
+              </div>
+              <div style={{ display: activeTab === "backtest" ? "block" : "none" }}>
+                <BacktestPanel selectedCode={selectedCode} />
+              </div>
+              <div style={{ display: activeTab === "trading" ? "block" : "none" }}>
+                <TradingPanel selectedCode={selectedCode} selectedName={selectedStock?.name} />
+              </div>
+              <div style={{ display: activeTab === "predict" ? "block" : "none" }}>
+                <PredictionPanel selectedCode={selectedCode} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

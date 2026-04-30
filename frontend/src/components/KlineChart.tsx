@@ -2,9 +2,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { init, dispose } from "klinecharts";
 import { API_BASE } from "../types";
 
+type DataSource = "stock" | "futures";
+
 interface Props {
   code: string | null;
   active?: boolean;
+  dataSource?: DataSource;
 }
 
 const PERIODS = [
@@ -18,11 +21,16 @@ const PERIODS = [
   { label: "月", value: "monthly", span: 1, type: "month" as const },
 ];
 
-function loadBars(code: string, period: string): Promise<Array<{
+const HISTORY_URL: Record<DataSource, string> = {
+  stock: `${API_BASE}/stocks`,
+  futures: `${API_BASE}/futures`,
+};
+
+function loadBars(code: string, period: string, source: DataSource): Promise<Array<{
   timestamp: number; open: number; high: number; low: number;
   close: number; volume: number; turnover: number;
 }>> {
-  return globalThis.fetch(`${API_BASE}/stocks/${code}/history?period=${period}`)
+  return globalThis.fetch(`${HISTORY_URL[source]}/${code}/history?period=${period}`)
     .then(res => res.ok ? res.json() : [])
     .then((data: Array<{ date: string; open: number; close: number; high: number; low: number; volume: number; turnover: number }>) =>
       data.map(d => ({
@@ -34,7 +42,7 @@ function loadBars(code: string, period: string): Promise<Array<{
     .catch(() => []);
 }
 
-export function KlineChart({ code, active = true }: Props) {
+export function KlineChart({ code, active = true, dataSource = "stock" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof init> | null>(null);
   const chartIdRef = useRef<string>("");
@@ -78,7 +86,7 @@ export function KlineChart({ code, active = true }: Props) {
 
     chart.setDataLoader({
       getBars: ({ callback }) => {
-        loadBars(code, activePeriod).then(callback);
+        loadBars(code, activePeriod, dataSource).then(callback);
       },
     });
 
@@ -87,7 +95,7 @@ export function KlineChart({ code, active = true }: Props) {
       chartRef.current = null;
       chartIdRef.current = "";
     };
-  }, [code, activePeriod, active]);
+  }, [code, activePeriod, active, dataSource]);
 
   const handlePeriodChange = useCallback((period: string) => {
     setActivePeriod(period);

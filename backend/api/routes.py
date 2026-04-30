@@ -13,6 +13,7 @@ from services import virtual_trading
 from services import predict
 from services.alert_store import store as alert_store
 from services.thread_pool import ThreadPool
+from services import futures_data
 from services import data_store, collector
 
 logger = logging.getLogger(__name__)
@@ -228,6 +229,46 @@ def stock_predict(code: str):
 def model_status():
     """查询模型状态"""
     return predict.get_model_status()
+
+
+# ===== 期货行情 =====
+
+@router.get("/futures/list")
+def futures_list():
+    """获取全部期货合约行情"""
+    try:
+        df = futures_data.get_futures_list()
+        return _records(df)
+    except Exception as e:
+        logger.error("Failed to get futures list: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/futures/main")
+def futures_main():
+    """获取主力合约行情"""
+    try:
+        df = futures_data.get_main_contracts()
+        return _records(df)
+    except Exception as e:
+        logger.error("Failed to get main contracts: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/futures/{code}/history")
+def futures_history(code: str, period: str = "daily",
+                    start_date: str = "", end_date: str = ""):
+    """获取期货历史K线"""
+    try:
+        df = futures_data.get_futures_history(
+            code, period=period,
+            start_date=start_date or None,
+            end_date=end_date or None,
+        )
+        return _records(df)
+    except Exception as e:
+        logger.error("Failed to get futures history for %s: %s", code, e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===== 量化预警 =====

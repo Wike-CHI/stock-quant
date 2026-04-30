@@ -38,6 +38,24 @@ export interface PatternMatch {
 export const WS_URL = `ws://${window.location.hostname}:8000/ws`;
 export const API_BASE = `http://${window.location.hostname}:8000/api`;
 
+export interface FuturesInfo {
+  code: string;
+  name: string;
+  price: number;
+  change_pct: number;
+  volume: number;
+  turnover: number;
+  open_interest: number;
+  high: number;
+  low: number;
+  open: number;
+  prev_close: number;
+  limit_pct?: number;
+  limit_up_price?: number;
+  limit_down_price?: number;
+  status?: string;
+}
+
 export const PATTERN_LABELS: Record<string, string> = {
   limit_up_streak: "连板模式",
   ma_bullish_alignment: "均线多头",

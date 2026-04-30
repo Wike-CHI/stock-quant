@@ -75,6 +75,41 @@ def is_trading_time(dt: datetime.datetime | None = None, buffer_minutes: int = P
     return (morning_start <= t <= MORNING_CLOSE) or (AFTERNOON_OPEN <= t <= AFTERNOON_CLOSE)
 
 
+# ── 期货交易时间 ──────────────────────────────────────────────
+# 日盘：9:00–10:15, 10:30–11:30, 13:30–15:00
+# 夜盘：21:00–次日 02:30（视品种不同，此处取最宽范围）
+FUTURES_DAY_MORNING_OPEN = datetime.time(9, 0)
+FUTURES_DAY_MORNING_BREAK = datetime.time(10, 15)
+FUTURES_DAY_MORNING_RESUME = datetime.time(10, 30)
+FUTURES_DAY_MORNING_CLOSE = datetime.time(11, 30)
+FUTURES_DAY_AFTERNOON_OPEN = datetime.time(13, 30)
+FUTURES_DAY_AFTERNOON_CLOSE = datetime.time(15, 0)
+FUTURES_NIGHT_OPEN = datetime.time(21, 0)
+FUTURES_NIGHT_CLOSE = datetime.time(23, 0)  # 大部分品种夜盘收盘
+FUTURES_NIGHT_EXTENDED = datetime.time(2, 30)  # 上期所/能源中心夜盘最晚
+
+
+def is_futures_trading_time(dt: datetime.datetime | None = None) -> bool:
+    """判断当前是否处于期货交易时段（含日盘 + 夜盘）"""
+    if dt is None:
+        dt = datetime.datetime.now()
+    if not is_trading_day(dt.date()):
+        return False
+
+    t = dt.time()
+    # 日盘
+    if (FUTURES_DAY_MORNING_OPEN <= t <= FUTURES_DAY_MORNING_BREAK):
+        return True
+    if (FUTURES_DAY_MORNING_RESUME <= t <= FUTURES_DAY_MORNING_CLOSE):
+        return True
+    if (FUTURES_DAY_AFTERNOON_OPEN <= t <= FUTURES_DAY_AFTERNOON_CLOSE):
+        return True
+    # 夜盘（21:00–02:30 跨日）
+    if t >= FUTURES_NIGHT_OPEN or t <= FUTURES_NIGHT_EXTENDED:
+        return True
+    return False
+
+
 def next_trading_time(dt: datetime.datetime | None = None) -> datetime.datetime:
     """返回下一个交易时段开始时间（用于日志/调度）"""
     if dt is None:

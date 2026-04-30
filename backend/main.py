@@ -12,6 +12,7 @@ from services.thread_pool import ThreadPool
 from services import stock_data
 from services import scanner
 from services import collector
+from services import futures_data
 
 logging.basicConfig(
     level=logging.DEBUG if config.DEBUG else logging.INFO,
@@ -45,6 +46,15 @@ async def lifespan(app: FastAPI):
         name="data-collector",
     )
     collector_thread.start()
+
+    # Pre-warm futures data and start background refresh
+    futures_data.prewarm_futures()
+    futures_thread = threading.Thread(
+        target=futures_data.background_futures_refresh,
+        daemon=True,
+        name="futures-refresh",
+    )
+    futures_thread.start()
 
     yield
     pool.shutdown()
