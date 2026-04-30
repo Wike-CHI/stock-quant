@@ -134,7 +134,7 @@ export function DatasetPanel() {
             outline: "none",
           }}
         />
-        <button style={btnStyle("secondary")} onClick={handleExport("csv")}>
+        <button style={btnStyle("secondary")} onClick={() => handleExport("csv")}>
           导出 CSV
         </button>
         <button style={btnStyle("secondary")} onClick={() => handleExport("json")}>
